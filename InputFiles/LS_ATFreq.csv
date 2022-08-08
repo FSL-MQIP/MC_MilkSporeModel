@@ -1,0 +1,128 @@
+Trial,HTST_Temp,Storage_Temp,Day,APCavg,Genus,species,AT,Taxon
+1,75,3,28,2.039590623,Bacillus,licheniformis,3513,Bacillus.licheniformis.1
+1,85,3,35,2.079181246,Bacillus,licheniformis,3513,Bacillus.licheniformis.1
+1,90,3,35,2.861316961,Bacillus,licheniformis,3513,Bacillus.licheniformis.1
+1,90,6.5,35,2.844920705,Bacillus,licheniformis,3513,Bacillus.licheniformis.1
+1,75,3,35,2.167226876,Bacillus,licheniformis,3513,Bacillus.licheniformis.6
+1,75,6.5,35,3.970043679,Paenibacillus,odorifer,15,Paenibacillus.odorifer.15
+1,75,10,35,7.820709949,Paenibacillus,odorifer,15,Paenibacillus.odorifer.15
+1,90,3,35,2.861316961,Paenibacillus,odorifer,15,Paenibacillus.odorifer.27
+1,85,3,35,2.079181246,Bacillus,safensis,61,Bacillus.safensis.140
+1,75,6.5,35,3.970043679,Bacillus,paralicheniformis,513,Bacillus.paralicheniformis.215
+1,75,10,14,7.152933528,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.239
+1,75,3,28,2.039590623,Bacillus,safensis,61,Bacillus.safensis.254
+1,75,10,14,7.152933528,Bacillus,cereus_ss,61,Bacillus.cereus_ss.277
+1,85,10,21,7.407908372,Bacillus,cereus_ss,61,Bacillus.cereus_ss.277
+1,90,10,7,7.214811551,Bacillus,cereus_ss,61,Bacillus.cereus_ss.296
+1,75,10,35,7.820709949,Lysinibacillus,sp.1,17,Lysinibacillus.sp.1.299
+1,90,10,7,7.214811551,Lysinibacillus,sp.1,17,Lysinibacillus.sp.1.299
+1,90,10,14,7.544018405,Lysinibacillus,sp.1,17,Lysinibacillus.sp.1.299
+1,75,10,14,7.152933528,Lysinibacillus,sp.1,17,Lysinibacillus.sp.1.303
+1,75,10,35,7.820709949,Bacillus,cereus_ss,61,Bacillus.cereus_ss.366
+1,85,10,7,7.230418864,Bacillus,toyonensis,3,Bacillus.toyonensis.775
+1,90,10,14,7.544018405,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.776
+1,85,6.5,35,6.630512417,Paenibacillus,peoriae_cf,340,Paenibacillus.peoriae_cf.777
+1,90,6.5,35,2.844920705,Paenibacillus,sp.1,45,Paenibacillus.sp.1.778
+1,75,3,35,2.167226876,Bacillus,safensis,61,Bacillus.safensis.1927
+2,75,10,13,6.811624645,Bacillus,licheniformis,3513,Bacillus.licheniformis.1
+2,90,6.5,21,7.336085887,Paenibacillus,odorifer,15,Paenibacillus.odorifer.7
+2,90,10,17,7.155664976,Paenibacillus,odorifer,15,Paenibacillus.odorifer.7
+2,75,6.5,35,7.514529475,Paenibacillus,odorifer,15,Paenibacillus.odorifer.15
+2,90,6.5,28,7.175936788,Paenibacillus,odorifer,15,Paenibacillus.odorifer.15
+2,90,10,15,7.743537495,Paenibacillus,odorifer,15,Paenibacillus.odorifer.15
+2,85,10,11,7.378302842,Paenibacillus,odorifer,15,Paenibacillus.odorifer.21
+2,85,6.5,28,7.065562678,Paenibacillus,odorifer,15,Paenibacillus.odorifer.74
+2,90,10,17,7.155664976,Bacillus,toyonensis,3,Bacillus.toyonensis.129
+2,85,10,13,7.281384272,Bacillus,cereus_ss,61,Bacillus.cereus_ss.296
+2,90,10,15,7.743537495,Lysinibacillus,sp.1,17,Lysinibacillus.sp.1.303
+2,85,10,11,7.378302842,Bacillus,cereus_ss,61,Bacillus.cereus_ss.768
+2,75,10,15,7.672052587,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.776
+2,85,6.5,35,6.63935519,Paenibacillus,sp.1,45,Paenibacillus.sp.1.778
+2,85,10,13,7.281384272,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.779
+3,75,6.5,28,7.269412494,Paenibacillus,odorifer,15,Paenibacillus.odorifer.11
+3,75,3,42,6.572947898,Paenibacillus,odorifer,15,Paenibacillus.odorifer.15
+3,85,6.5,21,7.404442934,Paenibacillus,odorifer,15,Paenibacillus.odorifer.15
+3,90,10,13,8.006862916,Paenibacillus,odorifer,15,Paenibacillus.odorifer.15
+3,90,3,35,7.232095685,Paenibacillus,odorifer,15,Paenibacillus.odorifer.32
+3,75,10,11,7.663287052,Paenibacillus,odorifer,15,Paenibacillus.odorifer.32
+3,90,10,11,7.33325899,Paenibacillus,sp.1,45,Paenibacillus.sp.1.42
+3,75,3,35,6.553604985,Paenibacillus,odorifer,15,Paenibacillus.odorifer.50
+3,85,6.5,28,7.811671042,Paenibacillus,odorifer,15,Paenibacillus.odorifer.50
+3,90,10,11,7.33325899,Paenibacillus,amylolyticus_sl,23,Paenibacillus.amylolyticus_sl.111
+3,85,10,13,7.170974323,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.239
+3,90,10,11,7.33325899,Bacillus,cereus_ss,61,Bacillus.cereus_ss.277
+3,90,10,11,7.33325899,Lysinibacillus,sp.1,17,Lysinibacillus.sp.1.299
+3,90,10,13,8.006862916,Bacillus,cereus_ss,61,Bacillus.cereus_ss.366
+3,75,10,13,7.206415001,Bacillus,mosaicus,61,Bacillus.mosaicus.410
+3,75,10,13,7.206415001,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.750
+3,85,10,13,7.170974323,Bacillus,toyonensis,3,Bacillus.toyonensis.775
+3,85,3,42,6.99947822,Paenibacillus,etheri,15,Paenibacillus.etheri.786
+4,75,3,7,2.024609011,Bacillus,licheniformis,3513,Bacillus.licheniformis.1
+4,75,3,21,2.039590623,Bacillus,licheniformis,3513,Bacillus.licheniformis.1
+4,85,3,42,3.844938201,Bacillus,licheniformis,3513,Bacillus.licheniformis.1
+4,90,3,21,1.903089987,Bacillus,licheniformis,3513,Bacillus.licheniformis.1
+4,90,3,42,2.924279286,Bacillus,licheniformis,3513,Bacillus.licheniformis.1
+4,90,3,21,1.903089987,Paenibacillus,odorifer,15,Paenibacillus.odorifer.15
+4,85,3,35,3.641650614,Paenibacillus,odorifer,15,Paenibacillus.odorifer.21
+4,85,3,42,3.844938201,Paenibacillus,odorifer,15,Paenibacillus.odorifer.21
+4,90,3,42,2.924279286,Paenibacillus,odorifer,15,Paenibacillus.odorifer.27
+4,85,3,42,3.844938201,Paenibacillus,odorifer,15,Paenibacillus.odorifer.36
+4,75,10,13,7.056637346,Bacillus,mosaicus,61,Bacillus.mosaicus.61
+4,85,10,15,6.932611228,Bacillus,mosaicus,61,Bacillus.mosaicus.61
+4,85,6.5,28,7.222272208,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.67
+4,75,10,13,7.056637346,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.67
+4,85,10,13,7.014122908,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.67
+4,90,6.5,28,4.553604985,Paenibacillus,sp.1,45,Paenibacillus.sp.1.77
+4,90,3,21,1.903089987,Bacillus,safensis,61,Bacillus.safensis.140
+4,75,3,21,2.039590623,Bacillus,safensis,61,Bacillus.safensis.141
+4,75,3,7,2.024609011,Bacillus,paralicheniformis,513,Bacillus.paralicheniformis.215
+4,75,6.5,28,6.80081274,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.239
+4,75,10,13,7.056637346,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.239
+4,85,10,13,7.014122908,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.239
+4,90,10,15,7.430803045,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.239
+4,90,10,17,7.548975535,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.239
+4,75,10,15,7.050185273,Bacillus,mosaicus,61,Bacillus.mosaicus.410
+4,90,3,42,2.924279286,Brevibacillus,borstelensis,159,Brevibacillus.borstelensis.519
+4,75,6.5,35,6.47204384,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.750
+4,85,10,15,6.932611228,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.750
+4,90,10,15,7.430803045,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.750
+4,90,10,17,7.548975535,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.750
+4,75,3,7,2.024609011,Streptococcus,salivarius,17,Streptococcus.salivarius.788
+4,85,10,13,7.014122908,Bacillus,mosaicus,61,Bacillus.mosaicus.789
+4,85,10,15,6.932611228,Bacillus,mosaicus,61,Bacillus.mosaicus.789
+4,75,10,15,7.050185273,Paenibacillus,peoriae_cf,179,Paenibacillus.peoriae_cf.790
+4,90,3,21,1.903089987,Paenibacillus,lautus,159,Paenibacillus.lautus.791
+4,85,6.5,21,6.18218578,Paenibacillus,peoriae_cf,340,Paenibacillus.peoriae_cf.792
+4,75,3,21,2.039590623,Paenibacillus,humicus,45,Paenibacillus.humicus.1929
+SP PSC,,,,,Bacillus,licheniformis,3513,
+SP PSC,,,,,Bacillus,licheniformis,3513,
+SP PSC,,,,,Bacillus,licheniformis,3513,
+SP PSC,,,,,Bacillus,licheniformis,3513,
+SP PSC,,,,,Paenibacillus,odorifer,15,
+SP PSC,,,,,Paenibacillus,odorifer,15,
+SP PSC,,,,,Paenibacillus,odorifer,15,
+SP PSC,,,,,Paenibacillus,odorifer,15,
+SP PSC,,,,,Paenibacillus,odorifer,15,
+SP PSC,,,,,Paenibacillus,odorifer,15,
+SP PSC,,,,,Paenibacillus,odorifer,15,
+SP PSC,,,,,Paenibacillus,amylolyticus_sl,23,
+SP PSC,,,,,Bacillus,horneckiae,3,
+SP PSC,,,,,Bacillus,horneckiae,3,
+SP PSC,,,,,Bacillus,subtilis_sl,61,
+SP PSC,,,,,Sporosarcina,newyorkensis,17,
+SP PSC,,,,,Bacillus,subtilis_sl,17,
+SP PSC,,,,,Sporosarcina,newyorkensis,17,
+SP PSC,,,,,Psychrobacillus,,17,
+SP PSC,,,,,Paenibacillus,amylolyticus_sl,23,
+SP PSC,,,,,Solibacillus,,17,
+SP PSC,,,,,Bacillus,subtilis_sl,61,
+SP PSC,,,,,Solibacillus,,17,
+SP PSC,,,,,Bacillus,licheniformis,513,
+SP PSC,,,,,Sporosarcina,sp_1_psychrotolerans_psychrodurans,17,
+SP PSC,,,,,Psychrobacillus,,17,
+SP PSC,,,,,Psychrobacillus,,17,
+SP PSC,,,,,Psychrobacillus,,17,
+SP PSC,,,,,Paenibacillus,cf_peoriae,179,
+SP PSC,,,,,Psychrobacillus,sp_1_psychrotolerans_psychrodurans,17,
+SP PSC,,,,,Psychrobacillus,,17,
+SP PSC,,,,,Bacillus,,61,

@@ -1,0 +1,677 @@
+---
+title: "MCsim_TimESLModel"
+author: "Tim Lott, Sarah I. Murphy"
+date: "01/14/21"
+output: pdf_document
+---
+Original file was spore model file copied from FISE folder on 9/21/2020. It was a simplified version (deleted unnecessary stuff) of MCsim.Rmd found in MC-2020 on GitHub, for use for the FISE project. The authors listed above are current contributors to this file. Additional authors of MCsim.Rmd include Samantha Lau, Timothy Lott, and Aljosa Trmcic. Earlier versions were the work of Ariel Buehler and Michael Phillips. Review README.md [https://github.com/FSL-MQIP/MC-2020/blob/master/README.md] for more information.
+
+Revised 10/27/2020, Sarah Murphy & Tim Lott, wrote notes about how to model bacteria concentrations in units of fluid milk from the point of facility through end of storage at school; also made notes about modeling from point of facility through end of storage at home, but will implement modeling school milk first. For initial modeling, implementation will be similar to what Sarah has written for Walmart project: https://github.com/IvanekLab/Walmart/blob/master/Walmart_120419_SupplyChainModel.Rmd
+
+Revised 10/29/20, Sarah Murphy, wrote code for school milk model, based on spore model code. School milk model is now functional, but will need review and troubleshooting, as described. The school milk model includes 3 stages: (1) storage at facility, (2) transportation from facility to schools, and (3) storage/display at schools. Unit of milk = half-pint. Current model result shows minimal growth over time, likely because of how lag is currently implemented & because temperature & time distributions still need to be reviewed. Started troubleshooting/editing code to adjust lag and mu, as needed, after temperature shifts, but need to discuss the proper way to implement. Data currently being used for defining parameters/distributions other than initial micro contamination & AT are described in the notes and are based on 10/27/2020 discussion.
+
+Revised 11/09/20, Sarah Murphy & Tim Lott, wrote code to implement adjustments to lag and mumax based on temperature shifts between stages. Our working rules are described in the code & the code currently runs without errors. We might consider adding a rule for cases where there are multiple temperature shifts within a short period of time (e.g., <1 day) because this could end up lag phase being extended for longer than is reasonable (due to 25% adjustment constant for each shift in temperature, assuming temp shift is not within 25%). Sarah also wrote a note for Tim in the code & copy-pasted here: Tim--I just used temperature from previous stage (T_T) for comparison to T_S, but we need to decide if should use temperature used (information in "CheckTemp_FtoT" column) instead (since in some cases, when T_T was within 25% of T_F, then retained parameters).
+
+Revised 12/08/20, Sarah Murphy & Tim Lott, saved most recent version of code from 11/9/20 containing school milk model code as "MCsim_TimSchoolMilkModel_120820". Deleted code in this file, "MCsim_TimSchoolMilkModel_120820" that pertained to school milk since this file will contain the ESL model. Wrote code for stages 1 (storage at facility) to 4 (transportation from retail store to homes); will pick up writing code next at stage 5 (storage at homes) & will also work on details of temp shifts on lag & mumax.
+
+Revised 12/10/20, Sarah Murphy & Tim Lott, reviewed code written for Stages 1-4 & started writing code for Stage 5; realized that for Stage 5, since temp stays constant for 35 days (our assumption) then need consider having a separate dataframe storing model output for Stage 5. We also searched for data to use for Stage 4--found good data on duration of transportation from retail to homes, but still searching for temperature data.
+
+Revised 12/11/20, Sarah Murphy made notes about how to implement temperature & time data for Stage 4, based on MC meeting.
+
+Revised 12/17/20, Sarah Murphy and Tim Lott, compared 2007 Ecosure data & 1999 Audits Internation data and decided to use 2007 data for temperature & storage info from retail to homes. Wrote code for lag w/ shift in temperature w/ simplest approach...at low temperatures (mostly below 0C), lag is very long for some milk units (in hundreds of days). Wrote some code for Stage 5, still needs work; it's a bit trickier than code for other stages b/c might have different data structure since 35 day storage at constant temperature.
+
+Revised 01/05/2021, Sarah Murphy, wrote code for stage 5. Ran everything with only 100 iterations and runs okay. Next steps should include code review to be done by Sarah, Tim, others? We especially need to review choices for temperature & time distributions as well as how we implemented how Mu and Lag will be affected by temperature shifts btwn stages. Another next step is that Tim and Sarah need to clean up his "Tim_ESL" folder on GitHub. Also, next steps need to include discussion with Tim & others how we want results to be organized--currently have 2 sep datasets w/ results. Also, we are now at a point where we should start discussing plans for validation & analysis (what-if, scenarios, basic data summary). 
+
+Revised 01/07/2021, Sarah Murphy and Tim Lott, started reviewing the code, will need to continue this review next time we meet. We still need to adjust how temperature is implemented from transportation from retail to home (Stage 4). Tim will compile the validation dataset that we will use.
+
+Revised  01/14/2021, Sarah Murphy and Tim Lott, decided for Stage 4 and possible also Stage 3, will use data from EcoSure 2007 for temperature & duration of the stage. In order to do this, either will use already published distributions determined by others that fit the best distribution to the original data OR we will re-fit the data and determine the best distribution ourselves--likely will re-fit ourselves. The others that have published distributions from this dataset are Latorre et al., 2011 (https://pubmed.ncbi.nlm.nih.gov/21819653/) and Pang et al., 2017 (https://pubmed.ncbi.nlm.nih.gov/28221978/). 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Set-up environment
+* load packages
+* load functions
+* set seed for reproducibilty
+```{r}
+## load packages
+library(readr)
+library(tidyverse)
+library(censReg)
+library(fitdistrplus)
+library(splitstackshape)
+library(rmutil)
+library(truncnorm)
+library(EnvStats)
+
+## load functions
+source("UtilityFunctions.R")
+
+# removed "t" from lagAtNewTemp
+lagAtNewTemp <- function (newTemp, oldLag, oldTemp = 6, T0 = -3.62) {
+  numerator <- oldTemp -T0
+  denom <- newTemp - T0
+  newLag <- ( (numerator / denom)^2) * oldLag
+  return(newLag)
+}
+```
+
+```{r knitr_options , include=FALSE}
+## set seed
+set.seed(1)
+```
+## 2. Load input files
+* load
+```{r}
+# (a) AT/ST frequency data (from Ariel_2017MC_SporeModel on MC-2020 on GitHub)
+# spore
+## 1. For experiment, you will change AT freq data here
+spore_ATfrequency_file <- "InputFiles/ColdgrowATFreq_CrossSect.csv"
+spore_ATfreq_import <- read.csv(spore_ATfrequency_file, stringsAsFactors = FALSE, header = TRUE)
+
+# (b) growth parameter data; make sure this contains growth parameters & growth model name
+# spore (from Ariel_2017MC_SporeModel on MC-2020 on GitHub)
+## 2. For experiment, you will change the growth parameter data
+spore_growth_file <- "InputFiles/GrowthParameters.csv" 
+spore_growth_import <-read.csv(spore_growth_file, stringsAsFactors = FALSE)
+
+# (c) initial microbial count data (from Ariel_2017MC_SporeModel on MC-2020 on GitHub)
+# spore
+spore_init_file <- read.csv("InputFiles/CrossSectional_RawMPN_3.6.17.csv")
+```
+* Modify naming in input files to be consistent across all MC-2020 model files
+```{r}
+spore_ATfreq_import$temp <- "AT"
+spore_ATfreq_import$ClosestAT <- paste(spore_ATfreq_import$temp,spore_ATfreq_import$ClosestAT,sep="_")
+
+spore_growth_import <- spore_growth_import %>%
+  .[c(1:5)]%>%
+  rename(STorAT = rpoBAT)
+spore_growth_import$model_name <- "buchanan" #may change later
+spore_growth_import$temp <- "AT"
+spore_growth_import$STorAT <- paste(spore_growth_import$temp,spore_growth_import$STorAT,sep="_")
+```
+
+## 3. Prepare initial contamination & AT distributions using input data
+a. Initial contamination: logMPN normal distribution
+b. Frequency of allelic types
+```{r}
+## (a) Initial contamination: logMPN normal distribution
+spore_init_file$log10left <- log10(spore_init_file$left)
+spore_init_file$log10right <- log10(spore_init_file$right)
+spore_init_file$log10MPN <- log10(spore_init_file$MPN)
+cens_data <- spore_init_file[,c("log10left","log10right")]
+names(cens_data) <- c("left","right")
+spore_fit <- fitdistcens(censdata = cens_data,distr = "norm")
+hist(spore_init_file$log10MPN,freq=F,xlim = c(-4,4))
+curve(dnorm(x,mean=spore_fit$estimate[1],sd = spore_fit$estimate[2]),add=T)
+plot(spore_fit)
+summary(spore_fit)
+
+spore_log10MPN_mean <- spore_fit$estimate[1]
+spore_log10MPN_sd <- spore_fit$estimate[2]
+
+## (b) Frequency of allelic types
+#Here, the "distribution" of ATs are taken directly from the input file by creating a vector of the AT in each of the rows in the the column containing the AT
+AT_freq <- spore_ATfreq_import$ClosestAT 
+```
+
+
+## 4. ESL milk model (facility -> storage at home)
+5 stages:
+i. Storage in facility
+ii. Transportation to retail store (starts at end of storage at facility, includes all tranport/storage events up to arrival at retail store, ends at arrival at retail store)
+- assumes that 1 retail store
+iii. Storage/display at retail store 
+iv. Transportation from retail store to home
+v. Storage at home
+
+#Set-up dataframe for modeling half-gallons (Hgal) milk:
+*lot_id (1:100) aka n_sim
+*unit_id (1:10) 
+
+*t_F: duration of storage at the facilty by lot (in days)
+*T_F: temperature during storage at the facility by lot, same for all units within same lot (in Celsius)
+*newLag_F (new lag parameter for T_F for AT)
+*newMu_F (new mumax parameter for T_F for AT)
+
+*t_T: duration of transportation from facility to the retail store by lot (in days)
+*T_T: temperature during stransportation from facility to the retail store by lot (in Celsius)
+*newLag_T (new lag parameter for T_T for AT)
+*newMu_T (new mumax parameter for T_T for AT)
+
+*t_S: duration of storage/display at the retail store by lot (in days)
+*T_S: temperature during storage/display at the retail store by lot (in Celsius)
+*newLag_S (new lag parameter for T_S for AT)
+*newMu_S (new mumax parameter for T_S for AT)
+
+*t_T2: duration of transportation from retail store to homes by lot (in days)
+*T_T2: temperature during transportation from retail store to homes by lot (in Celsius)
+*newLag_T2 (new lag parameter for T_T2 for AT)
+*newMu_T2 (new mumax parameter for T_T2 for AT)
+
+*t_H: duration of storage at homes by lot (in days)
+*T_H: temperature during store at homes by lot (in Celsius)
+*newLag_H (new lag parameter for T_H for AT)
+*newMu_H (new mumax parameter for T_H for AT)
+
+```{r}
+n_sim <- 100 #aka n_lot 
+n_units <- 10
+
+lot_id <- rep(seq(1, n_sim), each = n_units)
+unit_id <- rep(seq(1,n_units), times = n_sim ) 
+
+STorAT <- vector(mode="logical", n_sim  *n_units)
+
+#stage1, storage at facility
+t_F <- vector(mode="logical", n_sim  *n_units) 
+T_F <- vector(mode="logical", n_sim  *n_units) 
+count_F <- vector(mode = "logical", n_sim  *n_units)
+
+#stage2, transport to retail store
+t_T <- vector(mode="logical", n_sim  *n_units) 
+T_T <- vector(mode="logical", n_sim  *n_units) 
+count_T <- vector(mode = "logical", n_sim  *n_units)
+
+#stage3, storage/display at retail store
+t_S <- vector(mode="logical", n_sim  *n_units) 
+T_S <- vector(mode="logical", n_sim  *n_units) 
+count_S <- vector(mode = "logical", n_sim  *n_units)
+
+#stage4, transport from retail store to homes
+t_T2 <- vector(mode="logical", n_sim  *n_units) 
+T_T2 <- vector(mode="logical", n_sim  *n_units) 
+count_T2 <- vector(mode = "logical", n_sim  *n_units)
+
+#stage5, storage at homes
+t_H <- vector(mode="logical", n_sim  *n_units) 
+T_H <- vector(mode="logical", n_sim  *n_units) 
+count_H <- vector(mode = "logical", n_sim  *n_units)
+
+data <- data.frame(lot_id, unit_id,STorAT,t_F, T_F, count_F, 
+                   t_T, T_T, count_T, t_S, T_S, count_S, t_T2, T_T2, count_T2,
+                   t_H, T_H, count_H)
+```
+
+#Get initial count and AT for each milk unit (half-gallon; 1900 mL)
+*initial count is unique by lot, unit
+*AT is unique by lot, unit
+```{r}
+##get initial count
+spore_log10MPN_samp <- rnorm(n_sim, spore_log10MPN_mean, spore_log10MPN_sd) 
+#Convert spore_log10MPN_samp back to spore_MPN_samp
+spore_MPN_samp <- 10^spore_log10MPN_samp
+#Convert MPN for each sample (here, unique for each simulation aka lot) to equivalent in milk unit of interest (here, unit = half gallon; 1900 mL in half gallon)
+spore_MPN_samp_halfgal <- spore_MPN_samp * 237
+
+#Sample the MPN_init distribution
+spore_MPN_init<-vector()
+for (i in 1:n_sim){
+  spore_MPN_init_samp <-rep(rpois(n_units, spore_MPN_samp_halfgal[i]))
+  spore_MPN_init<-c(spore_MPN_init, spore_MPN_init_samp)}
+
+#First convert spore_MPN_init from half-gallon to mLs
+spore_MPN_init_mL <- spore_MPN_init / 1900
+data$spore_MPN_init_mL <- spore_MPN_init_mL
+#Also need to remove 0's from the data and replace with detection limit
+data$spore_MPN_init_mL[data$spore_MPN_init_mL<=0 ] <- 0
+data$spore_MPN_init_mL[data$spore_MPN_init_mL == 0] <- 0.01;
+#Add spore_log10MPN_init to dataframe
+data$spore_log10MPN_init_mL <- log10(data$spore_MPN_init_mL) 
+
+# (b) Sample AT from AT_freq & add to df
+AT <- vector()
+for (i in 1:n_sim){
+ AT_samp <- rep(sample(AT_freq, n_units, replace = T))
+  AT <- c(AT, AT_samp)}
+data$STorAT <- AT
+```
+
+#Stage 1: Model storage at facility
+* unit = half-gallon; 1900 mL (start modeling 10 units per lot)
+* each unit from the same lot is assigned the same temperature (because represents storage at facility)
+* constant temperature for duration of the storage
+* duration of storage (aka time) is the same for each unit by lot; use uniform distribution w/ 24, 48 h (implemented in units of days) (obtained from Tim's data collection)
+* distribution for temperature for storage at facility; uniform distribution, w/ 3.5 to 4.5 degrees Celsius (obtained from Tim's data collection)
+```{r}
+## (a)  Sample the temperature distribution & add to dataframe
+temps_F <- rep(runif(n_sim,min=3.5,max=4.5),each=n_units) #uniform distribution
+data$T_F <- temps_F
+
+## (b) Sample the storage time (in days) distribution & add to dataframe
+times_F <- rep(runif(n_sim,min=1,max=2),each=n_units) #uniform distribution
+data$t_F <- times_F
+
+## (c) Determine newLag_F and newMu_F
+for (i in 1:(n_sim*n_units)){
+  #Find row in growth parameter data that corresponds to allele sample
+ allele_index <- which(spore_growth_import$STorAT == data$STorAT[i])
+  
+  #Calculate the new growth parameters at new temp using the square root model 
+  newLag_F <- lagAtNewTemp(data$T_F[i], spore_growth_import$lag[allele_index])
+  newMu_F <-  muAtNewTemp(data$T_F[i], spore_growth_import$mumax[allele_index])
+  
+  data$newLag_F[i] <- newLag_F
+  data$newMu_F[i] <- newMu_F
+}
+
+## (d) Determine count_F
+for (i in 1:(n_sim *n_units)){
+  #Find row in growth parameter data that corresponds to allele sample
+  allele_index <- which(spore_growth_import$STorAT == data$STorAT[i]) 
+  
+  #Calculate the log10N count using the new growth parameters
+  data$count_F[i] <- log10N_func(data$t_F[i], data$newLag_F[i],data$newMu_F[i],data$spore_log10MPN_init_mL[i],spore_growth_import$LOG10Nmax[allele_index])
+}
+
+```
+
+#Stage 2: Model transport from facility to retail store (includes all transport & storage activities from facility to store)
+* unit = half-gallon; 1900 mL (start modeling 10 units per lot)
+* each unit from the same lot is assigned the same temperature (represents transportation of entire lot from facility to store...not very realistic?)
+* constant temperature for duration of the transportation
+* duration of transportation (aka time) is the same for each unit by lot; use triangular distribution from FDA assessment for retail transport duration: min 1 day, max 10 day, mode 5 days (implemented in units of days); (obtained from page 89; https://www.fda.gov/media/90488/download)
+* temperature is the same for each unit by lot for transportation from facility to store; use triangular distribution from FDA assessment, w/ min 1.7, max 10.0, mode 4.4 degrees Celsius (obtained from page 89 https://www.fda.gov/media/90488/download; for retail transport; original data from expert elicitation IDFA 2008 cited in paper).
+```{r}
+### (a)  Sample the temperature distribution & add to dataframe
+temps_T <- rep(rtri(n_sim,min=1.7,max=10.0,mode=4.4),each=n_units) #triangular distribution
+data$T_T <- temps_T
+
+### (b) Sample the storage time (in days) distribution & add to df
+times_T <- rep(rtri(n_sim,min=1,max=10,mode=5),each=n_units)
+data$t_T <- times_T
+
+### (c) Determine Lag_T and Mu_T
+## determine lag & mumax at new temp
+for (i in 1:(n_sim*n_units)){
+  #Find row in growth parameter data that corresponds to allele sample
+ allele_index <- which(spore_growth_import$STorAT == data$STorAT[i])
+  
+  #Calculate the new growth parameters at new temp using the square root model 
+  newLag_T <- lagAtNewTemp(data$T_T[i], spore_growth_import$lag[allele_index])
+  newMu_T <-  muAtNewTemp(data$T_T[i], spore_growth_import$mumax[allele_index])
+  
+  data$newLag_T[i] <- newLag_T
+  data$newMu_T[i] <- newMu_T
+}
+
+##IGNORE FOR NOW##
+## Determine Lag_T
+# Working rules for determining new lag
+# 1. if new temp (T_T) is within 25% of old temp (T_F), new lag (newLag_T) is oldLag (newLag_F) minus the duration elapsed in previous stage (t_F) 
+# 2. if new temp (T_T) is NOT within 25% of old temp (T_F), then new lag (newLag_T) is calculated by first determining the proportion of the oldLag (newLag_F) that had elapsed in the previous stage (e.g., proportion of 0.75 [75% lag time elapsed in previous stage]), separately determining lagAtNewTemp_T using the function "lagAtNewTemp", and then multiplying lagAtNewTemp_T by said proportion (i.e., lagAtNewTemp_T*proportionValue; e.g., lagAtNewTemp_T*0.75) and then adding to that 25% of lagAtNewTemp_T to get newLag_T (i.e., (lagAtNewTemp_T*proportionValue) + (lagAtnewTemp_T*0.25); e.g., (lagAtNewTemp_T*0.75) + (lagAtNewTemp_T*0.25)). 
+##IGNORE FOR NOW##
+
+# First go with simplest approach for lag
+
+# still in lag phase after previous stage?
+data$checkLagPhase_T <- ifelse((data$t_F/data$newLag_F) <1, 1, 0)
+
+# # determine if (T_T) is within 25% of old temp (T_F); implement rules 1 & 2 above
+# data$adjLag_T <- ifelse(data$T_T >= data$T_F*0.75 & data$T_T <= data$T_F*1.25, data$newLag_F-data$t_F, (data$newLag_T*(data$t_F/data$newLag_F)) + (data$newLag_T*0.25))
+
+#Approach 1: a. Hypothesis 2 from Zwietering 1994; 
+#b. Assumes shift in temperature does not require an adjustment period
+#λshift = (1 + γ – φ) * λT , where γ = 0, then  λshift = (1 – φ) * λT  
+data$adjLag_T <- ((1 - (data$t_F/data$newLag_F))*data$newLag_T) 
+
+#finally, assign the appropriate lag to use (i.e., Lag_T)
+data$Lag_T <- ifelse(data$checkLagPhase_T==0,0,data$adjLag_T)
+
+## Determine Mu_T
+# Working rules for determining new mumax
+# 1. If new temp (T_T) is within 25% of old temp (T_F), new mumax (Mu_T) is old mumax (newMu_F) 
+# 2. If new temp (T_T) is NOT within 25% of old temp (T_F), new mumax (Mu_T) is "newMu_T"
+
+# determine if (T_T) is within 25% of old temp (T_F); implement rules 1 & 2 above
+data$Mu_T <- ifelse(data$T_T >= data$T_F*0.75 & data$T_T <= data$T_F*1.25, data$newMu_F, data$newMu_T)
+
+# for upcoming calculations for next stage (display/storage at school), save whether or not (T_T) was within 25% of old temp (T_F), where "T_F" indicates that was within & "T_T" indicates outside of range
+data$checkTemp_FtoT <- ifelse(data$T_T >= data$T_F*0.75 & data$T_T <= data$T_F*1.25, "T_F", "T_T") 
+
+### (d) Determine count_T
+for (i in 1:(n_sim *n_units)){
+  #Find row in growth parameter data that corresponds to allele sample
+  allele_index <- which(spore_growth_import$STorAT == data$STorAT[i]) 
+  
+  #Calculate the log10N count using the new growth parameters
+  data$count_T[i] <- log10N_func(data$t_T[i], data$Lag_T[i],data$Mu_T[i],data$count_F[i],spore_growth_import$LOG10Nmax[allele_index])
+}
+```
+
+#Stage 3: Model storage/display at retail store
+* unit = half-gallon; 1900 mL (start modeling 10 units per lot)
+* each unit from the same lot is assigned the same temperature (represents transportation of entire lot from facility to store...not very realistic?)
+* constant temperature for duration of the transportation
+* duration of transportation is the same for each unit by lot; for now, use retail data from 2013 MQIP study (27 data points), truncated normal, w/ mean 43.7 h, sd 79.2 h, min 1.0 h, max 240 h, median 24 h (implemented in units of days)
+* temperature is the same for each unit by lot for transportation from facility to store; for now, use retail temps data 2013 Upstate NY retail storage temperature study MQIP, truncated normal distribution, w/ mean 2.3, standard deviation 1.8, at least temporarily use minimum and maximum for truncating, which are -1.4C min, 5.4 maximum (see similar example of implementation page 91 https://www.fda.gov/media/90488/download)
+```{r}
+## (a)  Sample the temperature distribution & add to dataframe
+temps_S <- rep(rtruncnorm(n_sim,a=-1.4,b=5.4,mean=2.3,sd=1.8),each=n_units) #triangular distribution
+data$T_S <- temps_S
+
+## (b) Sample the retail storage & display time (in days) distribution & add to dataframe
+times_S <- rep(rtruncnorm(n_sim,a=0.042,b=10.0, mean=1.821,sd=3.3),each=n_units)
+data$t_S <- times_S
+
+## (c) Determine Lag_S and Mu_S
+## determine lag & mumax at new temp
+for (i in 1:(n_sim*n_units)){
+  #Find row in growth parameter data that corresponds to allele sample
+ allele_index <- which(spore_growth_import$STorAT == data$STorAT[i])
+  
+  #Calculate the new growth parameters at new temp using the square root model 
+  newLag_S <- lagAtNewTemp(data$T_S[i], spore_growth_import$lag[allele_index])
+  newMu_S <-  muAtNewTemp(data$T_S[i], spore_growth_import$mumax[allele_index])
+  
+  data$newLag_S[i] <- newLag_S
+  data$newMu_S[i] <- newMu_S
+}
+
+## Determine Lag_S
+# see rules above in stage 2; additional rule is that 
+# still in lag phase after previous stage?
+data$checkLagPhase_S <- ifelse(((data$t_F/data$newLag_F)+(data$t_T/data$Lag_T)) <1, 1, 0)
+
+# determine if (T_S) is within 25% of old temp (T_T); implement rules 1 & 2 above 
+# **Tim - for now, I just used temperature from previous stage (T_T) for comparison to T_S, but we need to decide if should use temperature used (information in "CheckTemp_FtoT" column) instead (since in some cases, when T_T was within 25% of T_F, then retained parameters)
+# ***Sarah - I think when we switch stages, we should compare to the temperature used for growth parameters. So if we switch to 4 to 4.5 from Facility to Transport, we continue to use growth paramters for 4. So we should compare to 4 when switching to school. If the school is 5, we use new lag phase. If we switch to 4.5, we continue to use lag phase at 4. 
+# data$adjLag_S <- ifelse(data$T_S >= data$T_T*0.75 & data$T_S <= data$T_T*1.25, data$Lag_T-data$t_T, (data$newLag_S*(data$t_T/data$Lag_T)) + (data$newLag_S*0.25))
+
+#Approach 1: a. Hypothesis 2 from Zwietering 1994; 
+#b. Assumes shift in temperature does not require an adjustment period
+#λshift = (1 + γ – φ) * λT , where γ = 0, then  λshift = (1 – φ) * λT  
+data$adjLag_S <- ((1 - (data$t_F/data$newLag_F)+(data$t_T/data$Lag_T))*data$newLag_S) 
+
+
+#finally, assign the appropriate lag to use (i.e., Lag_S)
+data$Lag_S <- ifelse(data$checkLagPhase_S==0,0,data$adjLag_S)
+
+## Determine Mu_S
+#again, see rules above in stage 2
+# determine if (T_S) is within 25% of old temp (T_T); implement rules 1 & 2 above
+data$Mu_S <- ifelse(data$T_S >= data$T_T*0.75 & data$T_S <= data$T_T*1.25, data$newMu_T, data$newMu_S)
+
+# for upcoming calculations for next stage (display/storage at school), save whether or not (T_S) was within 25% of old temp (T_T), where "T_T" indicates that was within & "T_S" indicates outside of range
+data$checkTemp_TtoS <- ifelse(data$T_S >= data$T_T*0.75 & data$T_S <= data$T_T*1.25, "T_T", "T_S") 
+
+## (d) Determine count_S
+for (i in 1:(n_sim *n_units)){
+  #Find row in growth parameter data that corresponds to allele sample
+  allele_index <- which(spore_growth_import$STorAT == data$STorAT[i]) 
+  
+  #Calculate the log10N count using the new growth parameters
+  data$count_S[i] <- log10N_func(data$t_S[i], data$Lag_S[i],data$Mu_S[i],data$count_T[i],spore_growth_import$LOG10Nmax[allele_index])
+}
+```
+
+#Stage 4: Model transportation from retail store to home
+* unit = half-gallon; 1900 mL (start modeling 10 units per lot)
+* units from the same lot are assigned the same temperature (represents transportation of untis from same lot from retail store to 10 different homes)
+* constant temperature for duration of the transportation
+* duration of transportation is the different for each unit by lot 
+* temperature is the same for each unit by lot for transportation from store to home (assume this, it is realistic since approximately same temp outside of vehicle for all); * * for duration & temperature, use EcoSure 2007 data instead of FDA 1999 data--will need to either just use the distributions already fit published in Pang et al., 2017 (https://pubmed.ncbi.nlm.nih.gov/28221978/) OR will need to fit our own from the original dataset provided from EcoSure (https://www.foodrisk.org/resources/display/21)
+
+```{r}
+## (a)  Sample the temperature distribution & add to df
+temps_T2 <- rep(rtruncnorm(n_sim,a=0,b=10,mean=8.5,sd=1.0),each=n_units) #we made this up
+data$T_T2 <- temps_T2
+
+## (b) Sample the transportion time (in days) distribution & add to dataframe
+times_T2 <- rep(rtruncnorm(n_sim,a=0.01,b=0.24, mean=0.04,sd=0.02),each=n_units)
+data$t_T2 <- times_T2
+
+## (c) Determine Lag_S and Mu_S
+## determine lag & mumax at new temp
+for (i in 1:(n_sim*n_units)){
+  #Find row in growth parameter data that corresponds to allele sample
+ allele_index <- which(spore_growth_import$STorAT == data$STorAT[i])
+  
+  #Calculate the new growth parameters at new temp using the square root model 
+  newLag_T2 <- lagAtNewTemp(data$T_T2[i], spore_growth_import$lag[allele_index])
+  newMu_T2 <-  muAtNewTemp(data$T_T2[i], spore_growth_import$mumax[allele_index])
+  
+  data$newLag_T2[i] <- newLag_T2
+  data$newMu_T2[i] <- newMu_T2
+}
+
+## Determine Lag_T2
+# see rules above in stage 2; additional rule is that 
+# still in lag phase after previous stage?
+data$checkLagPhase_T2 <- ifelse(((data$t_F/data$newLag_F)+(data$t_T/data$Lag_T)+(data$t_S/data$Lag_S)) <1, 1, 0)
+
+
+#Approach 1: a. Hypothesis 2 from Zwietering 1994; 
+#b. Assumes shift in temperature does not require an adjustment period
+#λshift = (1 + γ – φ) * λT , where γ = 0, then  λshift = (1 – φ) * λT  
+data$adjLag_T2 <- (1 - (data$t_F/data$newLag_F)+(data$t_T/data$Lag_T)+(data$t_S/data$Lag_S))*data$newLag_T2 
+
+
+# # determine if (T_T2) is within 25% of old temp (T_T2); implement rules 1 & 2 above 
+# data$adjLag_T2 <- ifelse(data$T_T2 >= data$T_S*0.75 & data$T_T2 <= data$T_S*1.25, data$Lag_S-data$t_S, (data$newLag_T2*(data$t_S/data$Lag_S)) + (data$newLag_T2*0.25))
+
+#finally, assign the appropriate lag to use (i.e., Lag_T2)
+data$Lag_T2 <- ifelse(data$checkLagPhase_T2==0,0,data$adjLag_T2)
+
+## Determine Mu_T2
+#again, see rules above in stage 2
+# determine if (T_T2) is within 25% of old temp (T_S); implement rules 1 & 2 above
+data$Mu_T2 <- ifelse(data$T_T2 >= data$T_S*0.75 & data$T_T2 <= data$T_S*1.25, data$newMu_S, data$newMu_T2)
+
+# for upcoming calculations for next stage (transportation from retail store to homes), save whether or not (T_T2) was within 25% of old temp (T_S), where "T_S" indicates that was within & "T_T2" indicates outside of range
+data$checkTemp_StoT2 <- ifelse(data$T_T2 >= data$T_S*0.75 & data$T_T2 <= data$T_S*1.25, "T_S", "T_T2") 
+
+## (d) Determine count_T2
+for (i in 1:(n_sim *n_units)){
+  #Find row in growth parameter data that corresponds to allele sample
+  allele_index <- which(spore_growth_import$STorAT == data$STorAT[i]) 
+  
+  #Calculate the log10N count using the new growth parameters
+  data$count_T2[i] <- log10N_func(data$t_T2[i], data$Lag_T2[i],data$Mu_T2[i],data$count_S[i],spore_growth_import$LOG10Nmax[allele_index])
+}
+```
+
+#Stage 5: Model storage at home 
+* unit = half-gallon; 1900 mL (start modeling 10 units per lot)
+* all units are assigned different temperatures for storage at home (regardless of lot) 
+* constant temperature for duration of home storage
+* duration of home storage is assumed to be 35 days 
+* temperature is different for each unit for storage at home; https://doi.org/10.4315/0362-028X-73.2.312
+
+Part 1:
+- only will determine new lag and new mu (as necessary) for the first day of home storage, given that the temperature will be constant for the 35 days of home storage, as such, determine values for "H" terms, which will serve as initial day and then create new dataframe and implement same approach used in previous versions of the spore model for simulating spore concentration in milk over 35 days shelf life at constant temp
+```{r}
+## (a)  Sample the temperature distribution & add to df
+temps <- rep(NA, n_sim)
+
+for (i in 1:(n_sim*n_units)){
+  number <- rlaplace(1,m=4.06,s=2.31)
+  while (number > 15 | number < -1) {
+    number <- rlaplace(1,m=4.06,s=2.31) #make sure that this cannot be >15 or < -1
+  }
+  temps[i] <- number
+}
+
+data$T_H <- temps 
+
+## (b) Define t_H as 1 d for all units; this is just the first day of home storage
+data$t_H <- rep(1, each = n_sim*n_units)
+
+## (c) Determine Lag_H and Mu_H
+## determine lag & mumax at new temp
+for (i in 1:(n_sim*n_units)){
+  #Find row in growth parameter data that corresponds to allele sample
+ allele_index <- which(spore_growth_import$STorAT == data$STorAT[i])
+  
+  #Calculate the new growth parameters at new temp using the square root model 
+  newLag_H <- lagAtNewTemp(data$T_H[i], spore_growth_import$lag[allele_index])
+  newMu_H <-  muAtNewTemp(data$T_H[i], spore_growth_import$mumax[allele_index])
+  
+  data$newLag_H[i] <- newLag_H
+  data$newMu_H[i] <- newMu_H
+}
+
+## Determine Lag_H
+# see rules above in stage 2; additional rule is that 
+# still in lag phase after previous stage?
+data$checkLagPhase_H <- ifelse(((data$t_F/data$newLag_F)+(data$t_T/data$Lag_T)+(data$t_S/data$Lag_S)+(data$t_T2/data$Lag_T2)) <1, 1, 0)
+
+#Approach 1: a. Hypothesis 2 from Zwietering 1994; 
+#b. Assumes shift in temperature does not require an adjustment period
+#λshift = (1 + γ – φ) * λT , where γ = 0, then  λshift = (1 – φ) * λT  
+data$adjLag_H <- (1 - (data$t_F/data$newLag_F)+(data$t_T/data$Lag_T)+(data$t_S/data$Lag_S)+(data$t_T2/data$Lag_T2))*data$newLag_H 
+
+#finally, assign the appropriate lag to use (i.e., Lag_H)
+data$Lag_H <- ifelse(data$checkLagPhase_H==0,0,data$adjLag_H)
+
+## Determine Mu_H
+#again, see rules above in stage 2
+# determine if (T_H) is within 25% of old temp (T_T2); implement rules 1 & 2 above
+data$Mu_H <- ifelse(data$T_H >= data$T_T2*0.75 & data$T_H <= data$T_T2*1.25, data$newMu_T2, data$newMu_H)
+
+# save whether or not (T_H) was within 25% of old temp (T_T2), where "T_T2" indicates that was within & "T_H" indicates outside of range
+data$checkTemp_T2toH <- ifelse(data$T_H >= data$T_T2*0.75 & data$T_H <= data$T_T2*1.25, "T_T2", "T_H") 
+
+## (d) Determine count_H (this is the count for day 1 of home storage)
+for (i in 1:(n_sim *n_units)){
+  #Find row in growth parameter data that corresponds to allele sample
+  allele_index <- which(spore_growth_import$STorAT == data$STorAT[i]) 
+  
+  #Calculate the log10N count using the new growth parameters
+  data$count_H[i] <- log10N_func(data$t_H[i], data$Lag_H[i],data$Mu_H[i],data$count_T2[i],spore_growth_import$LOG10Nmax[allele_index])
+}
+```
+
+Part 2
+- prepare a new dataframe, including the following: lot_id, unit_id, STorAT, count_H (this is the count for day 1, effectively becomes the initial spore count for the new dataframe), T_H (this is the storage temp that will be constant over home storage), Lag_H, Mu_H (this is the mu to be used for all days of shelflife), spore_log10MPN_init_mL (this will be used later for determining if actual initial count was <1 cfu per unit)
+- since already have count for day 1, simulate day 2 to 35 with day 1 count as "initial count" in column "count_H"
+```{r}
+df2 <- data[c(1:3,17,18,48,49,20)]
+
+# need to expand to have 34 rows for each unit
+start_day <- 2 #First time point (in days) in unit's shelf life 
+end_day <- 35 #Last time point (in days) in unit's shelf life to simulate
+
+# make vector for days 2 to 35
+actual_t_H <- rep(rep(seq(start_day, end_day)), times = n_units*n_sim) # actual day
+sim_day <- rep(rep(seq(start_day-1, end_day-1)), times = n_units*n_sim) # day to use for simulation since "initial count" is for day 1
+
+# expand rows in dataframe so there are 34
+df3 <- df2[rep(seq_len(nrow(df2)), each = end_day-1), ] 
+
+# add actual_t_H (i.e., actual day of home storage) and sim_day to dataframe
+df3$actual_t_H <- actual_t_H
+df3$sim_day <- sim_day
+
+# make an empty vector for "count" with the length of n_sim * n_units * n_day
+count <- vector(mode = "logical", n_sim * n_units * (end_day-1))
+
+# add empty count to dataframe
+df3$count <- count
+
+## (d) Determine count for each day of shelf-life for each unit
+for (i in 1:(n_sim*n_units*(end_day-1))){
+  #Find row in growth parameter data that corresponds to allele sample
+  allele_index <- which(spore_growth_import$STorAT == df3$STorAT[i]) 
+  
+  #Calculate the log10N count using the new growth parameters
+  df3$count[i] <- log10N_func(df3$sim_day[i], df3$Lag_H[i],df3$Mu_H[i],df3$count_H[i],spore_growth_import$LOG10Nmax[allele_index])
+}
+```
+
+# Save datasets
+```{r}
+data_F_to_Hd1 <- data 
+save(data_F_to_Hd1, file = "data_F_to_Hd1.RData")
+
+data_Hd2_to_Hd35 <- df3
+save(data_Hd2_to_Hd35, file = "data_Hd2_to_Hd35.RData")
+```
+
+
+
+
+
+
+*OLD STUFF*
+Quick fix for now...
+Set anything with <1 cfu/half-pint to zero (since in cfu/mL; replace < -2.374 log10 cfu/mL (approx. 1 cfu/half-pint) w/ -6 log10 cfu/g which is very close to 0 if back calculate 10^-6*237 = 0.000237) 
+```{r}
+# if inital count (i.e., spore_log10MPN_init_mL) was < -3.278 log10 cfu/g, then no grow during shelf life
+
+#no intervention
+data_schoolmilk$count_F_original <- data_schoolmilk$count_F
+data_schoolmilk$count_T_original <- data_schoolmilk$count_T
+data_schoolmilk$count_S_original <- data_schoolmilk$count_S
+
+data_schoolmilk$count_F <- ifelse(data_schoolmilk$spore_log10MPN_init_mL < -2.374, -6, data_schoolmilk$count_F_original)
+data_schoolmilk$count_T <- ifelse(data_schoolmilk$spore_log10MPN_init_mL < -2.374, -6, data_schoolmilk$count_T_original)
+data_schoolmilk$count_S <- ifelse(data_schoolmilk$spore_log10MPN_init_mL < -2.374, -6, data_schoolmilk$count_S_original)
+
+#reorder columns in dataframe
+data_schoolmilk <-data_schoolmilk[c(1:4,15,7,10,13,5,8,11,6,9,12,14,16:31)]
+
+#now, save data
+# save(data_schoolmilk, file = "data_schoolmilk.RData")
+```
+
+
+## Notes from 10/27/2020 meeting Sarah & Tim
+Original proposed steps
+i. Storage in facility
+ii. Transport to distribution center [SKIP FOR NOW]
+iii. Storage in distribution center [SKIP FOR NOW]
+iv. Transport to retail (or school)
+v. Storage/display at retail
+vii. Transport to home
+viii. Storage at home
+
+V-school
+i. Storage in facility
+ii. Transportation to school (starts at end of storage at facility, includes all tranport/storage events up to arrival at school, ends at arrival at school)
+iii. Storage/display at school [consider splitting this up maybe]
+
+V-retail (retail -> home)
+i. Storage in facility
+ii. Transportation to retail (starts at end of storage at facility, includes all tranport/storage events up to arrival at retail, ends at arrival at retail)
+iii. Storage/display at retail
+iv. Transport to home
+v. Storage at home
+
+**detailed notes:
+V-school
+i. Storage in facility
+* unit = half-pint (aka 8 oz); 237 mL (start modeling 50 units per lot, 10 per each school)
+* each unit from the same lot is assigned the same temperature (because represents storage at facility)
+* constant temperature for duration of the storage
+* duration of storage (aka time) is different for each school (modeling 5 schools); based on Tim's data: mean 36 h, sd 10 h, min 23, max 48 (again, this is temporary, change later), for now, uniform distribution w/ 24, 48 h
+* distribution for temperature for storage at facility; uniform distribution, w/ 3.5 to 4.5 degrees Celsius (obtained from data collection)
+
+ii. Transportation to school (starts at end of storage at facility, includes all tranport/storage events up to arrival at school, ends at arrival at school)
+* unit = half-pint (aka 8 oz); 237 mL (start modeling 50 units per lot, 10 per each school)
+* units for each school are assigned different temperature (because represents transport to different schools); units from the same school are assigned the same temperature
+* constant temperature for duration of the storage
+* duration of transportation is different for each school (modeling 5 schools); from Tim's small dataset (3 data points) had mean 5.2 h, sd 0.6 h, min 4.5 h, max 5.9 h; compare to triangular distribution from FDA assessment for retail transport duration was: min 1 day, max 10 day, mode 5 days (obtained from page 89; https://www.fda.gov/media/90488/download); TEMPORARILY use truncated normal distribution w/ mean 5.2 h, sd 2.5 h, truncate [0.5h, 24 h aka 1 day] (model in fractions of day) 
+* distribution for temperature for transportation to school; triangular distribution, w/ min 1.7, max 10.0, mode 4.4 degrees Celsius (obtained from page 89 https://www.fda.gov/media/90488/download; for retail transport; original data from expert elicitation IDFA 2008 cited in paper).
+
+iii. Storage/display at school [consider splitting this up maybe]
+* unit = half-pint (aka 8 oz); 237 mL (start modeling 50 units per lot, 10 per each school)
+* units for each school are assigned different temperature (because represents storage/display at different schools); units from the same school are assigned the same temperature
+* constant temperature for duration of the storage
+* duration of storage is different for each school (modeling 5 schools); Tim will look back at survey data to get specifics for schools; for now, use retail data from 2013 MQIP study (27 data points), truncated normal, w/ mean 43.7 h, sd 79.2 h, min 1.0 h, max 240 h, median 24 h
+* distribution for temperature for storage/display at school [use retail temps for now from 2013 Upstate NY retail storage temperature study MQIP, Tim obtain through data collection in future]; truncated normal distribution, w/ mean 2.3, standard deviation 1.8, at least temporarily use minimum and maximum for truncating, which are -1.4C min, 5.4 maximum (see similar example of implementation page 91 https://www.fda.gov/media/90488/download)
+
+**more notes
+Growth Parameters
+	- Model microbial growth with shifts in temperature
+	- Use approach outlined in Hypothesis III from (Zwietering et al 1994)
+	- Lag: Assumes additional lag phase + 25% of lag phase at new temperature
+	- Maximum Growth Rate: Assumes 25% of lag phase at new temperature before continuing growth rate 	at new temperature
+	
+To start, model each stage as a new "chunk" like Sarah did here: https://github.com/IvanekLab/Walmart/blob/master/Walmart_120419_SupplyChainModel.Rmd
+
+
+
+
+

@@ -1,0 +1,114 @@
+Genus,Species,AT,n_TX1,pct_TX1,n_NY1,pct_NY1,n_TX2,pct_TX2,n_Txcom,pct_Txcom
+Bacillus,licheniformis,1,10,10,,,2,6,12,9%
+Bacillus,odorifer,2,,,3,2,,,0,0%
+Bacillus,weihenstephanensis,3,,,22,14,,,0,0%
+Bacillus,licheniformis,6,1,1,,,2,6,3,2%
+Bacillus,odorifer,7,2,2,1,<1,1,3,3,2%
+Bacillus,odorifer,11,1,1,,,,,1,1%
+Bacillus,odorifer,13,,,1,<1,,,0,0%
+Bacillus,odorifer,15,10,10,15,9,,,10,8%
+Bacillus,odorifer,16,,,1,<1,,,0,0%
+Viridibacillus,arvi/aernosi,17,,,2,1,,,0,0%
+Bacillus,odorifer,18,,,1,<1,1,3,1,1%
+Bacillus,odorifer,19,,,1,<1,,,0,0%
+Bacillus,odorifer,21,1,1,5,3,2,6,3,2%
+Bacillus,amylolyticus s.l.,23,,,2,1,,,0,0%
+Bacillus,odorifer,27,4,4,1,<1,3,9,7,5%
+Bacillus,amylolyticus s.l.,28,,,2,1,,,0,0%
+Bacillus,amylolyticus s.l.,29,,,3,2,,,0,0%
+Bacillus,odorifer,32,2,2,,,,,2,2%
+Bacillus,odorifer,35,,,2,1,,,0,0%
+Bacillus,odorifer,36,1,1,1,<1,,,1,1%
+Bacillus,graminis,39,,,3,2,,,0,0%
+Bacillus,odorifer,40,,,2,1,,,0,0%
+Bacillus,borealis,41,,,1,<1,,,0,0%
+Bacillus,sp. 1,42,1,1,,,,,1,1%
+Bacillus,amylolyticus,49,,,,,1,3,1,1%
+Bacillus,odorifer,50,2,2,3,2,,,2,2%
+Bacillus,mosaicus,61,2,2,3,2,,,2,2%
+Bacillus,c.f. peoriae,67,3,3,,,,,3,2%
+Bacillus,odorifer,74,1,1,2,1,,,1,1%
+Bacillus,weihenstephanensis,75,,,18,11,,,0,0%
+Bacillus,sp. 2,77,1,1,1,<1,,,1,1%
+Bacillus,amylolyticus s.l.,83,,,1,<1,,,0,0%
+Bacillus,graminis,87,,,4,3,,,0,0%
+Bacillus,weihenstephanensis,90,,,1,<1,,,0,0%
+Bacillus,weihenstephanensis,97,,,1,<1,,,0,0%
+Bacillus,amylolyticus,111,1,1,1,<1,1,3,2,2%
+Bacillus,safensis,124,2,2,,,,,2,2%
+Solibacillus,sp. 3,126,,,,,1,3,1,1%
+Bacillus,toyonensis,129,1,1,,,,,1,1%
+Bacillus,weihenstephanensis,132,,,2,1,,,0,0%
+Bacillus,c.f. cookii,138,,,4,3,,,0,0%
+Bacillus,lactis,139,,,1,<1,,,0,0%
+Bacillus,safensis,140,2,2,,,,,2,2%
+Bacillus,safensis,141,1,1,,,,,1,1%
+Bacillus,megaterium,151,,,3,2,,,0,0%
+Bacillus,c.f. peoriae,157,,,2,1,,,0,0%
+Bacillus,graminis,163,,,1,<1,,,0,0%
+Bacillus,sp. 5,168,,,1,<1,,,0,0%
+Bacillus,c.f. peoriae,170,,,3,2,,,0,0%
+Bacillus,c.f. peoriae,179,,,10,6,,,0,0%
+Bacillus,amylolyticus s.l.,184,,,1,<1,,,0,0%
+Bacillus,amylolyticus s.l.,189,,,1,<1,,,0,0%
+Bacillus,c.f. peoriae,199,,,4,3,,,0,0%
+Bacillus,paralicheniformis,215,2,2,,,,,2,2%
+Bacillus,horneckiae,223,,,,,1,3,1,1%
+Bacillus,c.f. peoriae,239,6,6,2,1,1,3,7,5%
+Bacillus,horneckiae,244,,,,,1,3,1,1%
+Bacillus,safensis,254,1,1,,,,,1,1%
+Solibacillus,sp. 4,256,,,,,1,3,1,1%
+Bacillus,subtilis s.l.,269,,,,,1,3,1,1%
+Bacillus,amylolyticus s.l.,274,,,1,<1,,,0,0%
+Bacillus,cereus s.s.,277,3,3,,,,,3,2%
+Bacillus,NA,281,,,,,1,3,1,1%
+Sporosarcina,newyorkensis,292,,,,,1,3,1,1%
+Bacillus,cereus s.s.,296,2,2,,,,,2,2%
+Bacillus,sp. 1,299,3,3,1,<1,,,3,2%
+Bacillus,sp. 2,303,2,2,3,2,,,2,2%
+Bacillus,licheniformis,316,,,,,1,3,1,1%
+Psychrobacillus,NA,323,,,,,1,3,1,1%
+Bacillus,subtilis s.l.,330,,,,,1,3,1,1%
+Bacillus,c.f. cookii,332,,,1,<1,,,0,0%
+Bacillus,c.f. peoriae,334,,,1,<1,,,0,0%
+Bacillus,graminis,335,,,1,<1,,,0,0%
+Bacillus,graminis,336,,,1,<1,,,0,0%
+Bacillus,c.f. pabuli,338,,,1,<1,,,0,0%
+Bacillus,graminis,339,,,1,<1,,,0,0%
+Bacillus,c.f. peoriae,340,,,2,1,,,0,0%
+Bacillus,weihenstephanensis,342,,,1,<1,,,0,0%
+Bacillus,macerans,343,,,2,1,,,0,0%
+Bacillus,amylolyticus s.l.,345,,,1,<1,,,0,0%
+Bacillus,odorifer,346,,,1,<1,,,0,0%
+Bacillus,odorifer,348,,,1,<1,,,0,0%
+Bacillus,graminis,349,,,1,<1,,,0,0%
+Bacillus,cereus s.s.,366,2,2,,,,,2,2%
+Bacillus,mosaicus,410,2,2,,,,,2,2%
+Bacillus,pasadenensis,507,1,1,,,,,1,1%
+Bacillus,borstelensis,519,1,1,,,,,1,1%
+Bacillus,odorifer,530,1,1,,,,,1,1%
+Psychrobacillus,sp. 1,564,,,,,1,3,1,1%
+Psychrobacillus,sp. 2,567,,,,,1,3,1,1%
+Bacillus,subtilis s.l.,570,,,,,1,3,1,1%
+Psychrobacillus,NA,659,,,,,4,12,4,3%
+Sporosarcina,newyorkensis,661,,,,,1,3,1,1%
+Other,,681,,,,,1,3,1,1%
+Bacillus,c.f. peoriae,750,4,4,,,,,4,3%
+Bacillus,cereus s.s.,768,2,2,,,,,2,2%
+Bacillus,toyonensis,775,2,2,,,,,2,2%
+Bacillus,c.f. peoriae,776,2,2,,,,,2,2%
+Bacillus,c.f. peoriae,777,1,1,,,,,1,1%
+Bacillus,sp. 3,778,2,2,,,,,2,2%
+Bacillus,c.f. peoriae,779,1,1,,,,,1,1%
+Bacillus,mosaicus,780,1,1,,,,,1,1%
+Bacillus,sp. 4,781,1,1,,,,,1,1%
+Bacillus,etheri,786,1,1,,,,,1,1%
+Bacillus,subtilis s.l.,787,1,1,,,,,1,1%
+Bacillus,mosaicus,789,1,1,,,,,1,1%
+Bacillus,c.f. peoriae,790,1,1,,,,,1,1%
+Bacillus,lautus,791,1,1,,,,,1,1%
+Bacillus,c.f. peoriae,792,1,1,,,,,1,1%
+Gram + non-sporeformers,,,3,3,,,,,3,2%
+,,,,,,,,,,
+TOTAL Unique Isolates,,,100,,159,,33,,133,
+,,,48,,58,,25,,66,
