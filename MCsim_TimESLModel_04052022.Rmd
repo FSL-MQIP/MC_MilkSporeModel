@@ -265,7 +265,7 @@ source("Validation/Second validation.R", print.eval = T)
 * Validation with temp shifts
 * Raw milk source = NY
 * AT distribution = NY
-```{r, message=FALSE, warning=FALSE, eval=T}
+```{r, message=FALSE, warning=FALSE, eval=F}
 #third_val_summary = vector()
 #for (Tmin in (seq(0.8,1.4, by=0.05))){
 #  lagAtNewTemp <- function (newTemp, oldLag, oldTemp = 6, T0 = Tmin) {
@@ -345,10 +345,12 @@ for (i in 1:(n_sim *n_units)){
 ```{r}
 ### (a)  Sample the temperature distribution & add to dataframe
 temps_T <- rep(rtri(n_sim,min=1.7,max=10.0,mode=4.4),each=n_units) #triangular distribution
+#temps_T <- rep(rtri(n_sim,min=1.7,max=6.0,mode=4.4),each=n_units) #what-if scenario
 data$T_T <- temps_T
 
 ### (b) Sample the storage time (in days) distribution & add to df
-times_T <- rep(rtri(n_sim,min=1,max=10,mode=5),each=n_units)
+#times_T <- rep(rtri(n_sim,min=1,max=10,mode=5),each=n_units)
+times_T <- rep(rtri(n_sim,min=1,max=7,mode=5),each=n_units) #what-if scenario
 data$t_T <- times_T
 
 ### (c) Determine Lag_T and Mu_T
@@ -712,13 +714,13 @@ names(dat) = c("t_F","T_F", "Lag_F","Mu_F", "t_T", "T_T", "Lag_T","Mu_T", "t_S",
 summary(dat)
 
 
-dat2 = as.data.frame(cbind(data$t_F, data$T_F, data$t_T, data$T_T, data$t_S, data$T_S, data$t_T2, data$T_T2,data$T_H, data$spore_log10MPN_init_mL, df3$count[sim_day==21]))
-names(dat2) = c("t_F","T_F",  "t_T", "T_T","t_S", "T_S", "t_T2", "T_T2", "T_H",  "n_i", "count")
+dat2 = as.data.frame(cbind(data$t_F, data$T_F, data$t_T, data$T_T, data$t_S, data$T_S, data$t_T2, data$T_T2,data$T_H, data$spore_log10MPN_init_mL, df3$count[sim_day==21]>=log10(20000)))
+names(dat2) = c("t_F","T_F",  "t_T", "T_T","t_S", "T_S", "t_T2", "T_T2", "T_H",  "n_i", "spoil")
 
 
 sa = epi.prcc(dat2, sided.test = 2)
 sa$var = names(dat2)[-ncol(dat2)]
-#sa_sig = sa[sa$p.value<0.05/20,]
+sa_sig = sa[sa$p.value<0.05/10,]
 sa = sa[order(sa$gamma, decreasing = F),]
 barplot(sa$gamma, horiz = TRUE, names.arg = sa$var, las=1,cex.names = 1, xlim = c(-0.2,0.8))
 
@@ -754,7 +756,13 @@ names(df) = rownames(crf.imp)
 df = sort(df, decreasing = F)
 barplot(df, horiz = TRUE, names.arg = names(df), las=1, cex.names = 1, xlim = c(0,100))
 ```
-
+## Table 3
+```{r}
+Val2AT = read.csv("InputFiles/LS_ATFreq.csv")
+Val2AT$Taxon = Val2AT$Taxon %>% as.factor()
+LS_AT_Summary = summary(Val2AT$Taxon)
+write.csv(LS_AT_Summary, "LS_AT_Summary.csv")
+```
 
 
 
