@@ -34,7 +34,7 @@ Val2_sum %>% filter(Storage_Temp == 6.5 & Day == 0) %>% pull(APC) %>% mean()
 Val2_sum %>% filter(Storage_Temp == 10 & Day == 0) %>% pull(APC) %>% mean()
 
 #Data processing
-Val2_data = Val2_data[Val2_data$CVTA=="N" & Val2_data$Day != 0,]
+Val2_data = Val2_data[Val2_data$CVTA=="N" & Val2_data$Day != 0 & Val2_data$Day != 17 & Val2_data$Day != 49 & Val2_data$Day != 63,]
 Val2 = data.frame(rep(Val2_data$Day, 1000), rep(Val2_data$DayInt_SPC, 1000), rep(Val2_data$Storage_Temp,1000), rep(Val2_data$APC,1000))
 names(Val2) = c("Day","DayInt_SPC","Storage_Temp","APC")
 
@@ -80,18 +80,12 @@ T3D35.P = Val2_T3 %>% filter(Type == "Pred" & Day == 35) %>% pull(Count) %>% mea
 T3D35.A = Val2_T3 %>% filter(Type == "Actual" & Day == 35) %>% pull(Count) %>% mean()
 T3D42.P = Val2_T3 %>% filter(Type == "Pred" & Day == 42) %>% pull(Count) %>% mean()
 T3D42.A = Val2_T3 %>% filter(Type == "Actual" & Day == 42) %>% pull(Count) %>% mean()
-T3D49.P = Val2_T3 %>% filter(Type == "Pred" & Day == 49) %>% pull(Count) %>% mean()
-T3D49.A = Val2_T3 %>% filter(Type == "Actual" & Day == 49) %>% pull(Count) %>% mean()
-T3D63.P = Val2_T3 %>% filter(Type == "Pred" & Day == 63) %>% pull(Count) %>% mean()
-T3D63.A = Val2_T3 %>% filter(Type == "Actual" & Day == 63) %>% pull(Count) %>% mean()
 T3.RMSE = sqrt(((T3D7.P-T3D7.A)^2 + 
                  (T3D14.P-T3D14.A)^2 +
                  (T3D21.P-T3D21.A)^2 +
                  (T3D28.P-T3D28.A)^2 +
                  (T3D35.P-T3D35.A)^2 +
-                 (T3D42.P-T3D42.A)^2 +
-                 (T3D49.P-T3D49.A)^2 +
-                 (T3D63.P-T3D63.A)^2)/8)
+                 (T3D42.P-T3D42.A)^2) /6)
 T3.21.RMSE = sqrt(((T3D7.P-T3D7.A)^2 + 
                   (T3D14.P-T3D14.A)^2 +
                   (T3D21.P-T3D21.A)^2)/3)
@@ -135,8 +129,7 @@ T10D13.P = Val2_T10 %>% filter(Type == "Pred" & Day == 13) %>% pull(Count) %>% m
 T10D13.A = Val2_T10 %>% filter(Type == "Actual" & Day == 13) %>% pull(Count) %>% mean()
 T10D15.P = Val2_T10 %>% filter(Type == "Pred" & Day == 15) %>% pull(Count) %>% mean()
 T10D15.A = Val2_T10 %>% filter(Type == "Actual" & Day == 15) %>% pull(Count) %>% mean()
-T10D17.P = Val2_T10 %>% filter(Type == "Pred" & Day == 17) %>% pull(Count) %>% mean()
-T10D17.A = Val2_T10 %>% filter(Type == "Actual" & Day == 17) %>% pull(Count) %>% mean()
+
 
 T10.RMSE = sqrt(((T10D3.P-T10D3.A)^2 + 
                   (T10D5.P-T10D5.A)^2 +
@@ -144,8 +137,7 @@ T10.RMSE = sqrt(((T10D3.P-T10D3.A)^2 +
                   (T10D9.P-T10D9.A)^2 +
                   (T10D11.P-T10D11.A)^2 +
                   (T10D13.P-T10D13.A)^2 +
-                  (T10D15.P-T10D15.A)^2 +
-                  (T10D17.P-T10D17.A)^2)/8)
+                  (T10D15.P-T10D15.A)^2)/7)
 ## Overall
 (All.RMSE = sqrt(((T3D7.P-T3D7.A)^2 + 
                   (T3D14.P-T3D14.A)^2 +
@@ -181,8 +173,7 @@ ggplot(data = Val2_T3, aes(x=Day, y=Count, fill=Type))+
   #scale_x_discrete(breaks = sort(unique(Val2_T3$Day)))+
   geom_hline(yintercept = 4.3, linetype=2)+
   labs(y="Predicted concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (3°C) storage (Days).",
-       title = "Validation for milks stored at 3°C")+
+       x="Duration of refrigerated (3°C) storage (Days)")+
   theme(axis.title.y = element_text(size=12),
         #axis.ticks.x=element_blank(),
         #axis.text.x=element_blank(),
@@ -197,8 +188,7 @@ ggplot(data = Val2_T6.5, aes(x=Day, y=Count, fill=Type))+
   #scale_x_discrete(breaks = sort(unique(Val2_T3$Day)))+
   geom_hline(yintercept = 4.3, linetype=2)+
   labs(y="Predicted concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (6.5°C) storage (Days).",
-       title = "Validation for milks stored at 6.5°C")+
+       x="Duration of refrigerated (6.5°C) storage (Days)")+
   theme(axis.title.y = element_text(size=12),
         #axis.ticks.x=element_blank(),
         #axis.text.x=element_blank(),
@@ -213,8 +203,7 @@ ggplot(data = Val2_T10, aes(x=Day, y=Count, fill=Type))+
   #scale_x_discrete(breaks = sort(unique(Val2_T3$Day)))+
   geom_hline(yintercept = 4.3, linetype=2)+
   labs(y="Predicted concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (10°C) storage (Days).",
-       title = "Validation for milks stored at 10°C")+
+       x="Duration of refrigerated (10°C) storage (Days)")+
   theme(axis.title.y = element_text(size=12),
         #axis.ticks.x=element_blank(),
         #axis.text.x=element_blank(),

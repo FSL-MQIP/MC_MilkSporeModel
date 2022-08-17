@@ -791,14 +791,14 @@ sim_D42 = rbind(auto_rep(sim_T4D42, T4_lcm), auto_rep(sim_SCD42, SC_lcm))
 
 
 
-third_val_T4_data = cbind(auto_rep(sim_T4D7, T4_lcm), auto_rep(third_val_T4D7, T4_lcm),
-                       auto_rep(sim_T4D14, T4_lcm), auto_rep(third_val_T4D14, T4_lcm),
-                       auto_rep(sim_T4D21, T4_lcm), auto_rep(third_val_T4D21, T4_lcm),
-                       auto_rep(sim_T4D35, T4_lcm), auto_rep(third_val_T4D35, T4_lcm),
-                       auto_rep(sim_T4D42, T4_lcm), auto_rep(third_val_T4D42, T4_lcm))
+third_val_T4_data = cbind(auto_rep(third_val_T4D7, T4_lcm),auto_rep(sim_T4D7, T4_lcm), 
+                        auto_rep(third_val_T4D14, T4_lcm),auto_rep(sim_T4D14, T4_lcm),
+                        auto_rep(third_val_T4D21, T4_lcm),auto_rep(sim_T4D21, T4_lcm),
+                        auto_rep(third_val_T4D35, T4_lcm),auto_rep(sim_T4D35, T4_lcm),
+                        auto_rep(third_val_T4D42, T4_lcm),auto_rep(sim_T4D42, T4_lcm))
 
 third_val_T4_melt = melt(third_val_T4_data)
-third_val_T4_melt$Var1 = c(rep(7, 48000),rep(14, 48000), rep(21, 48000), rep(35,48000), rep(42, 48000))
+third_val_T4_melt$Var1 = c(rep(7, 96000),rep(14, 96000), rep(21, 96000), rep(35,96000), rep(42, 96000))
 
 ggplot(data=third_val_T4_melt, aes(x=Var1, y=value,group=Var2))+
   geom_boxplot(fill=c("white","grey","white","grey","white","grey","white","grey",
@@ -807,8 +807,8 @@ ggplot(data=third_val_T4_melt, aes(x=Var1, y=value,group=Var2))+
   scale_x_continuous(breaks = c(7,14,21,28,35,42))+
   geom_hline(yintercept = 4.3, linetype=2)+
   labs(y="Spore-former concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (4°C) storage (Days).",
-       title = "Validation for milks stored at 4°C")+
+       x="Duration of refrigerated (4°C) storage (Days)")+
+       #title = "Validation for milks stored at 4°C")+
   theme(axis.title.y = element_text(size=12),
         #axis.ticks.x=element_blank(),
         #axis.text.x=element_blank(),
@@ -817,14 +817,14 @@ ggplot(data=third_val_T4_melt, aes(x=Var1, y=value,group=Var2))+
 
 
 
-third_val_T6_data = cbind(auto_rep(sim_T6D7, T6_lcm), auto_rep(third_val_T6D7, T6_lcm),
-                          auto_rep(sim_T6D14, T6_lcm), auto_rep(third_val_T6D14, T6_lcm),
-                          auto_rep(sim_T6D21, T6_lcm), auto_rep(third_val_T6D21, T6_lcm),
-                          auto_rep(sim_T6D28, T6_lcm), auto_rep(third_val_T6D28, T6_lcm),
-                          auto_rep(sim_T6D35, T6_lcm), auto_rep(third_val_T6D35, T6_lcm))
+third_val_T6_data = cbind( auto_rep(third_val_T6D7, T6_lcm),auto_rep(sim_T6D7, T6_lcm),
+                          auto_rep(third_val_T6D14, T6_lcm),auto_rep(sim_T6D14, T6_lcm), 
+                          auto_rep(third_val_T6D21, T6_lcm), auto_rep(sim_T6D21, T6_lcm),
+                           auto_rep(third_val_T6D28, T6_lcm),auto_rep(sim_T6D28, T6_lcm),
+                          auto_rep(third_val_T6D35, T6_lcm),auto_rep(sim_T6D35, T6_lcm))
 
 third_val_T6_melt = melt(third_val_T6_data)
-third_val_T6_melt$Var1 = c(rep(7, 24000),rep(14, 24000), rep(21, 24000), rep(28, 24000),rep(35, 24000))
+third_val_T6_melt$Var1 = c(rep(7, 96000),rep(14, 96000), rep(21, 96000), rep(28, 96000),rep(35, 96000))
 
 ggplot(data=third_val_T6_melt, aes(x=Var1,y=value,group=Var2))+
   geom_boxplot(fill=c("white","grey","white","grey","white","grey","white","grey",
@@ -833,23 +833,22 @@ ggplot(data=third_val_T6_melt, aes(x=Var1,y=value,group=Var2))+
   geom_hline(yintercept = 4.3, linetype=2)+
   scale_x_continuous(breaks = c(7,14,21,28,35,42))+
   labs(y="Spore-former concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (6°C) storage (Days).",
-       title = "Validation for milks stored at 6°C")+
+       x="Duration of refrigerated (6°C) storage (Days)")+
   theme(axis.title.y = element_text(size=12),
         plot.title = element_text(hjust = 0.5))
 
 
 
 
-third_val_SC_data = cbind(auto_rep(sim_SCD7, SC_lcm), auto_rep(third_val_SCD7, SC_lcm),
-                          auto_rep(sim_SCD14, SC_lcm), auto_rep(third_val_SCD14, SC_lcm),
-                          auto_rep(sim_SCD21, SC_lcm), auto_rep(third_val_SCD21, SC_lcm),
-                          auto_rep(sim_SCD28, SC_lcm), auto_rep(third_val_SCD28, SC_lcm),
-                          auto_rep(sim_SCD35, SC_lcm), auto_rep(third_val_SCD35, SC_lcm),
-                          auto_rep(sim_SCD42, SC_lcm), auto_rep(third_val_SCD42, SC_lcm))
+third_val_SC_data = cbind( auto_rep(third_val_SCD7, SC_lcm),auto_rep(sim_SCD7, SC_lcm),
+                           auto_rep(third_val_SCD14, SC_lcm),auto_rep(sim_SCD14, SC_lcm),
+                           auto_rep(third_val_SCD21, SC_lcm),auto_rep(sim_SCD21, SC_lcm),
+                           auto_rep(third_val_SCD28, SC_lcm),auto_rep(sim_SCD28, SC_lcm),
+                          auto_rep(third_val_SCD35, SC_lcm),auto_rep(sim_SCD35, SC_lcm), 
+                           auto_rep(third_val_SCD42, SC_lcm),auto_rep(sim_SCD42, SC_lcm))
 
 third_val_SC_melt = melt(third_val_SC_data)
-third_val_SC_melt$Var1 = c(rep(7, 48000),rep(14, 48000), rep(21, 48000), rep(28, 48000),rep(35, 48000),rep(42, 48000))
+third_val_SC_melt$Var1 = c(rep(7, 96000),rep(14, 96000), rep(21, 96000), rep(28, 96000),rep(35, 96000),rep(42, 96000))
 
 ggplot(data=third_val_SC_melt, aes(x=Var1,y=value,group=Var2))+
   geom_boxplot(fill=c("white","grey","white","grey","white","grey","white","grey",
@@ -858,7 +857,6 @@ ggplot(data=third_val_SC_melt, aes(x=Var1,y=value,group=Var2))+
   geom_hline(yintercept = 4.3, linetype=2)+
   scale_x_continuous(breaks = c(7,14,21,28,35,42))+
   labs(y="Spore-former concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (supply chain temperature) storage (Days).",
-       title = "Validation for milks stored at supply chain temperature")+
+       x="Duration of refrigerated (supply chain temperature) storage (Days)")
   theme(axis.title.y = element_text(size=12),
         plot.title = element_text(hjust = 0.5))

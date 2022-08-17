@@ -265,7 +265,7 @@ source("Validation/Second validation.R", print.eval = T)
 * Validation with temp shifts
 * Raw milk source = NY
 * AT distribution = NY
-```{r, message=FALSE, warning=FALSE, eval=F}
+```{r, message=FALSE, warning=FALSE, eval=T}
 #third_val_summary = vector()
 #for (Tmin in (seq(0.8,1.4, by=0.05))){
 #  lagAtNewTemp <- function (newTemp, oldLag, oldTemp = 6, T0 = Tmin) {
