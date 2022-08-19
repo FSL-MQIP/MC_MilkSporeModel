@@ -1,5 +1,5 @@
 # Initial validation
-# Use Ariel's validation dataset to check if new modification can be validated.
+# Use validation dataset from previous model (Buehler et al., 2018) to validate the modification.
 
 for (i in 1:(n_sim *n_units)){
   #Find row in growth parameter data that corresponds to allele sample
