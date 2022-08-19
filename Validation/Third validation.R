@@ -1,4 +1,4 @@
-third_val = read.csv("InputFiles/ESL_Validation3.csv", header = TRUE)
+third_val = read.csv("InputFiles/ValidationData3.csv", header = TRUE)
 
 # Summary stats
 third_val %>% count(PPC == "Y")
@@ -688,87 +688,6 @@ rownames(sum_stats) = c("day7","day14","day21","day28","day35","day42")
                           (mean(sim_SCD21) - mean(third_val_SCD21))^2)/3)
 
 #########################################################################
-boxplot(sim_T4D7,third_val_T4D7,
-        sim_T4D14,third_val_T4D14,
-        sim_T4D21,third_val_T4D21,
-        sim_T4D35,third_val_T4D35,
-        sim_T4D42,third_val_T4D42,
-        main = "validation for 4C samples",
-        names = c("Pred d7","Actual d7",
-                  "Pred d14","Actual d14",
-                  "Pred d21","Actual d21",
-                  "Pred d35","Actual d35",
-                  "Pred d42","Actual d42"),
-        col=c("white","grey",
-              "white","grey",
-              "white","grey",
-              "white","grey",
-              "white","grey"),
-        las=2)
-
-
-
-boxplot(sim_T6D7,third_val_T6D7,
-        sim_T6D14,third_val_T6D14,
-        sim_T6D21,third_val_T6D21,
-        sim_T6D28,third_val_T6D28,
-        sim_T6D35,third_val_T6D35,
-        main = "validation for 6C samples",
-        names = c("Pred d7","Actual d7",
-                  "Pred d14","Actual d14",
-                  "Pred d21","Actual d21",
-                  "Pred d28","Actual d28",
-                  "Pred d35","Actual d35"),
-        col=c("white","grey",
-              "white","grey",
-              "white","grey",
-              "white","grey",
-              "white","grey"),
-        las=2)
-
-boxplot(sim_SCD7,third_val_SCD7,
-        sim_SCD14,third_val_SCD14,
-        sim_SCD21,third_val_SCD21,
-        sim_SCD28,third_val_SCD28,
-        sim_SCD35,third_val_SCD35,
-        sim_SCD42,third_val_SCD42,
-        main = "validation for SC samples",
-        names = c("Pred d7","Actual d7",
-                  "Pred d14","Actual d14",
-                  "Pred d21","Actual d21",
-                  "Pred d28","Actual d28",
-                  "Pred d35","Actual d35",
-                  "Pred d42","Actual d42"),
-        col=c("white","grey",
-              "white","grey",
-              "white","grey",
-              "white","grey",
-              "white","grey",
-              "white","grey"),
-        las=2)
-
-boxplot(sim_D7,third_val_D7,
-        sim_D14,third_val_D14,
-        sim_D21,third_val_D21,
-        sim_D28,third_val_D28,
-        sim_D35,third_val_D35,
-        sim_D42,third_val_D42,
-        main = "validation",
-        names = c("Pred d7","Actual d7",
-                  "Pred d14","Actual d14",
-                  "Pred d21","Actual d21",
-                  "Pred d28","Actual d28",
-                  "Pred d35","Actual d35",
-                  "Pred d42","Actual d42"),
-        col=c("white","grey",
-              "white","grey",
-              "white","grey",
-              "white","grey",
-              "white","grey",
-              "white","grey"),
-        las=2)
-
-
 T4_num_list = sapply(list(sim_T4D7, sim_T4D14, sim_T4D21, sim_T4D35, sim_T4D42, third_val_T4D7, third_val_T4D14, third_val_T4D21, third_val_T4D35,third_val_T4D42), length)
 T4_lcm = mLCM(T4_num_list)
 T6_num_list = sapply(list(sim_T6D7, sim_T6D14, sim_T6D21, sim_T6D28, sim_T6D35, third_val_T6D7, third_val_T6D14, third_val_T6D21, third_val_T6D28,third_val_T6D35), length)
@@ -781,6 +700,8 @@ auto_rep = function(x, l){
   x = rep(x, rep_num)
 }
 
+
+## Validation at 4C
 sim_D7 = rbind(auto_rep(sim_T4D7, T4_lcm), auto_rep(sim_T6D7, T6_lcm), auto_rep(sim_SCD7, SC_lcm))
 sim_D14 = rbind(auto_rep(sim_T4D14, T4_lcm), auto_rep(sim_T6D14, T6_lcm), auto_rep(sim_SCD14, SC_lcm))
 sim_D21 = rbind(auto_rep(sim_T4D21, T4_lcm), auto_rep(sim_T6D21, T6_lcm), auto_rep(sim_SCD21, SC_lcm))
@@ -816,7 +737,7 @@ ggplot(data=third_val_T4_melt, aes(x=Var1, y=value,group=Var2))+
 
 
 
-
+## Validation at 6C
 third_val_T6_data = cbind( auto_rep(third_val_T6D7, T6_lcm),auto_rep(sim_T6D7, T6_lcm),
                           auto_rep(third_val_T6D14, T6_lcm),auto_rep(sim_T6D14, T6_lcm), 
                           auto_rep(third_val_T6D21, T6_lcm), auto_rep(sim_T6D21, T6_lcm),
@@ -839,7 +760,7 @@ ggplot(data=third_val_T6_melt, aes(x=Var1,y=value,group=Var2))+
 
 
 
-
+## Validation at SC
 third_val_SC_data = cbind( auto_rep(third_val_SCD7, SC_lcm),auto_rep(sim_SCD7, SC_lcm),
                            auto_rep(third_val_SCD14, SC_lcm),auto_rep(sim_SCD14, SC_lcm),
                            auto_rep(third_val_SCD21, SC_lcm),auto_rep(sim_SCD21, SC_lcm),

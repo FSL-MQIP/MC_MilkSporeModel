@@ -21,8 +21,8 @@ for (i in 1:(n_sim *n_units)){
 pred_counts_21 = data$val_count[data$val_count>1]
 
 # load validation dataset
-VSL_import_14 <- read.csv("InputFiles/VSL_Gpos_d14.csv")
-VSL_import_21 <- read.csv("InputFiles/VSL_Gpos_d21.csv")
+VSL_import_14 <- read.csv("InputFiles/ValidationData1_d14.csv")
+VSL_import_21 <- read.csv("InputFiles/ValidationData1_d21.csv")
 VSL_counts_14 <- VSL_import_14$log_VSL_D14
 VSL_counts_21 <- VSL_import_21$log_VSL
 ks.test(pred_counts_14, VSL_counts_14)

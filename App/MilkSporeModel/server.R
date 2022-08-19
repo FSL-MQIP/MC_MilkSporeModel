@@ -22,7 +22,7 @@ set.seed(1)
 ######################################## 2. Prepare input files ##########################################
 # load input files
 ## (a) AT/ST frequency data 
-spore_ATfrequency_file <- "InputFiles/ColdgrowATFreq_CrossSect_NGATs.csv"
+spore_ATfrequency_file <- "InputFiles/Baseline_ATFreq.csv"
 spore_ATfreq_import <- read.csv(spore_ATfrequency_file, stringsAsFactors = FALSE, header = TRUE)
 
 ## (b) growth parameter data
@@ -30,7 +30,7 @@ spore_growth_file <- "InputFiles/GrowthParameters_NoGrowthATs.csv"
 spore_growth_import <-read.csv(spore_growth_file, stringsAsFactors = FALSE)
 
 ## (c) initial microbial count data 
-spore_init_file <- read.csv("InputFiles/CrossSectional_RawMPN_3.6.17.csv")
+spore_init_file <- read.csv("InputFiles/Baseline_InitialSporeCount.csv")
 
 
 # Modify input files

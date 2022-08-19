@@ -1,2 +1,0 @@
-# MC_MilkSporeModel
- 

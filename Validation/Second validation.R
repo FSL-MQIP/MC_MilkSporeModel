@@ -2,7 +2,7 @@
 #LS AT frequency and validation data
 
 #AT frequency table
-LS_AT = read.csv("InputFiles/LS_ATFreq.csv")
+LS_AT = read.csv("InputFiles/Texas_ATFreq.csv")
 LS_ATfreq = LS_AT$AT
 LS_ATfreq = ifelse(LS_ATfreq == 3513, 513, LS_ATfreq) #assigning 3513 to 3 only
 
