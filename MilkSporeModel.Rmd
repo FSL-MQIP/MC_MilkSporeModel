@@ -246,22 +246,18 @@ for (i in 1:(n_units*n_sim)){
 
 data$STorAT = AT
 ```
-#First validation
+#Sanity check
 * Use Ariel's validation dataset to check if new modification can be validated.
 ```{r, eval=FALSE}
-#source("Validation/First validation.R", print.eval = T)
-```
-#Second validation
-```{r, eval=FALSE}
-source("Validation/Second validation.R", print.eval = T)
+#source("Validation/Sanity check.R", print.eval = T)
 ```
 
-#Third validation
-* Validation with temp shifts
+#Optimization
+* Model optimization under temp shifts
 * Raw milk source = NY
 * AT distribution = NY
-```{r, message=FALSE, warning=FALSE, eval=T}
-#third_val_summary = vector()
+```{r, message=T, warning=T, eval=T}
+#opti_summary = vector()
 #for (Tmin in (seq(0.8,1.4, by=0.05))){
 #  lagAtNewTemp <- function (newTemp, oldLag, oldTemp = 6, T0 = Tmin) {
 #  numerator <- oldTemp -T0
@@ -269,14 +265,19 @@ source("Validation/Second validation.R", print.eval = T)
 #  newLag <- ( (numerator / denom)^2) * oldLag
 #  return(newLag)
 #}
-source("Validation/Third validation.R", print.eval = F)
+source("Validation/Optimization.R", print.eval = F)
 #metrics = c(Tmin, metric_mean, metric_med, metric_sd, metric_D)
-#third_val_summary = rbind(third_val_summary, metrics)
+#opti_summary = rbind(opti_summary, metrics)
 #}
-#colnames(third_val_summary) = c("Tmin", "metric_mean", "metric_med", "metric_sd", "metric_D")
-#third_val_summary
-#write.csv(third_val_summary, "performance_summary.csv")
+#colnames(opti_summary) = c("Tmin", "metric_mean", "metric_med", "metric_sd", "metric_D")
+#opti_summary
+#write.csv(opti_summary, "performance_summary.csv")
 
+```
+
+#Validation
+```{r, eval=FALSE}
+source("Validation/Validation.R", print.eval = T)
 ```
 
 
@@ -715,7 +716,7 @@ train.control = trainControl(method = "repeatedcv",
                              repeats = 3,
                              search = "grid")
 
-spoiled = as.factor(dat2[,ncol(dat2)]>=log10(20000))
+spoiled = as.factor(dat2[,ncol(dat2)])
 cf.fit = train(x = dat2[,-ncol(dat2)],
                 y = spoiled,
                 method = "cforest",
