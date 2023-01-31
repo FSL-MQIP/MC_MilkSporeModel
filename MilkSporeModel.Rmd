@@ -81,6 +81,9 @@ spore_init_file <- read.csv("InputFiles/Baseline_InitialSporeCount.csv")
 ```
 * Modify naming in input files to be consistent across all MC-2020 model files
 ```{r}
+start = Sys.time()
+
+
 spore_ATfreq_import$temp <- "AT"
 spore_ATfreq_import$ClosestAT <- paste(spore_ATfreq_import$temp,spore_ATfreq_import$ClosestAT,sep="_")
 
@@ -103,9 +106,9 @@ spore_init_file$log10MPN <- log10(spore_init_file$MPN)
 cens_data <- spore_init_file[,c("log10left","log10right")]
 names(cens_data) <- c("left","right")
 spore_fit <- fitdistcens(censdata = cens_data,distr = "norm")
-#hist(spore_init_file$log10MPN,freq=F,xlim = c(-4,4))
-#curve(dnorm(x,mean=spore_fit$estimate[1],sd = spore_fit$estimate[2]),add=T)
-#plot(spore_fit)
+hist(spore_init_file$log10MPN,freq=F,xlim = c(-4,4))
+curve(dnorm(x,mean=spore_fit$estimate[1],sd = spore_fit$estimate[2]),add=T)
+plot(spore_fit)
 summary(spore_fit)
 
 spore_log10MPN_mean <- spore_fit$estimate[1]
@@ -156,7 +159,7 @@ v. Storage at home
 *newMu_H (new mumax parameter for T_H for AT)
 
 ```{r}
-n_sim <- 100 #aka n_lot 
+n_sim <- 1000 #aka n_lot 
 n_units <- 10
 
 lot_id <- rep(seq(1, n_sim), each = n_units)
@@ -256,7 +259,7 @@ data$STorAT = AT
 * Model optimization under temp shifts
 * Raw milk source = NY
 * AT distribution = NY
-```{r, message=T, warning=T, eval=T}
+```{r, message=T, warning=T, eval=FALSE}
 #opti_summary = vector()
 #for (Tmin in (seq(0.8,1.4, by=0.05))){
 #  lagAtNewTemp <- function (newTemp, oldLag, oldTemp = 6, T0 = Tmin) {
@@ -288,14 +291,6 @@ source("Validation/Validation.R", print.eval = T)
 * duration of storage (aka time) is the same for each unit by lot; use uniform distribution w/ 24, 48 h (implemented in units of days) (obtained from Tim's data collection)
 * distribution for temperature for storage at facility; uniform distribution, w/ 3.5 to 4.5 degrees Celsius (obtained from Tim's data collection)
 ```{r}
-# use newly determined T0
-lagAtNewTemp <- function (newTemp, oldLag, oldTemp = 6, T0 = 1.15) {
-  numerator <- oldTemp -T0
-  denom <- newTemp - T0
-  newLag <- ( (numerator / denom)^2) * oldLag
-  return(newLag)
-}
-
 ## (a)  Sample the temperature distribution & add to dataframe
 temps_F <- rep(runif(n_sim,min=3.5,max=4.5),each=n_units) #uniform distribution
 #temps_F <- rep(runif(n_sim,min=2.5,max=3.5),each=n_units) #What-if scenario
@@ -345,8 +340,8 @@ temps_T <- rep(rtri(n_sim,min=1.7,max=10.0,mode=4.4),each=n_units) #triangular d
 data$T_T <- temps_T
 
 ### (b) Sample the storage time (in days) distribution & add to df
-#times_T <- rep(rtri(n_sim,min=1,max=10,mode=5),each=n_units)
-times_T <- rep(rtri(n_sim,min=1,max=7,mode=5),each=n_units) #what-if scenario
+times_T <- rep(rtri(n_sim,min=1,max=10,mode=5),each=n_units)
+#times_T <- rep(rtri(n_sim,min=1,max=7,mode=5),each=n_units) #what-if scenario
 data$t_T <- times_T
 
 ### (c) Determine Lag_T and Mu_T
@@ -469,7 +464,7 @@ for (i in 1:(n_sim *n_units)){
 
 ```{r}
 ## (a)  Sample the temperature distribution & add to df
-temps_T2 <- rep(rtruncnorm(n_sim,a=0,b=10,mean=8.5,sd=1.0),each=n_units) #we made this up
+temps_T2 <- rep(rtruncnorm(n_sim,a=0,b=10,mean=8.5,sd=1.0),each=n_units) 
 data$T_T2 <- temps_T2
 
 ## (b) Sample the transportion time (in days) distribution & add to dataframe
@@ -595,6 +590,8 @@ for (i in 1:(n_sim *n_units)){
   #Calculate the log10N count using the new growth parameters
   data$count_H[i] <- log10N_func(data$t_H[i], data$Lag_H[i],data$Mu_H[i],data$count_T2[i],spore_growth_import$LOG10Nmax[allele_index])
 }
+
+
 ```
 
 Part 2
@@ -632,6 +629,10 @@ for (i in 1:(n_sim*n_units*(end_day-1))){
   #Calculate the log10N count using the new growth parameters
   df3$count[i] <- log10N_func(df3$sim_day[i], df3$Lag_H[i],df3$Mu_H[i],df3$count_H[i],spore_growth_import$LOG10Nmax[allele_index])
 }
+
+
+end = Sys.time()
+end - start
 ```
 
 #Results

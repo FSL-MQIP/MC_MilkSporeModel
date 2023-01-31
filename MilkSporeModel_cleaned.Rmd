@@ -1,0 +1,385 @@
+---
+title: "Milk Spore Model"
+author: "Luke Qian, Tim Lott, Sarah I. Murphy"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+```
+
+## 1. Set-up environment
+* load packages
+* load functions
+* set seed for reproducibilty
+```{r, message=FALSE, warning=FALSE}
+## load packages
+library(readr)
+library(censReg)
+library(fitdistrplus)
+library(splitstackshape)
+library(rmutil)
+library(truncnorm)
+library(EnvStats)
+library(epiR)
+library(stats)
+library(reshape2)
+library(caret)
+library(vip)
+library(numbers)
+library(tidyverse)
+
+## load functions
+source("UtilityFunctions.R")
+```
+
+## 2. Load input files
+* load
+```{r}
+## AT frequency data (from Ariel_2017MC_SporeModel on MC-2020 on GitHub)
+ATfreq = read.csv("InputFiles/Baseline_ATFreq.csv", stringsAsFactors = FALSE, header = TRUE)
+
+## growth parameter data; make sure this contains growth parameters & growth model name
+GrowthParas = read.csv("InputFiles/GrowthParameters_NoGrowthATs.csv" , stringsAsFactors = FALSE)
+
+## initial microbial count data (from Ariel_2017MC_SporeModel on MC-2020 on GitHub)
+InitConcData = read.csv("InputFiles/Baseline_InitialSporeCount.csv")
+```
+
+## 3. Process model parameters
+```{r, warning=FALSE}
+start = Sys.time()
+
+## Extract AT frequency 
+ATfreq = ATfreq %>% pull(ClosestAT)
+
+GrowthParas = GrowthParas %>%
+  select(rpoBAT, lag, mumax, LOG10Nmax)
+
+## Fit initial spore concentration into a normal distribution
+DistFit = InitConcData %>% 
+  mutate(log10left = log10(left),
+         log10right = log10(right)) %>% 
+  select(log10left, log10right) %>% 
+  rename(left = log10left, right = log10right) %>% 
+  fitdistcens(., distr = "norm")
+
+Log10InitConc_mean = DistFit$estimate[1]
+Log10InitConc_sd = DistFit$estimate[2]
+```
+
+
+## 4. ESL milk model (facility -> storage at home)
+5 stages:
+i. Storage in facility
+ii. Transportation to retail store (starts at end of storage at facility, includes all tranport/storage events up to arrival at retail store, ends at arrival at retail store)
+- assumes that 1 retail store
+iii. Storage/display at retail store 
+iv. Transportation from retail store to home
+v. Storage at home
+
+### set-up dataframe for modeling half-gallons (Hgal) milk:
+*lot_id (1:100) aka n_sim
+*unit_id (1:10) 
+
+*initial count is unique by lot, unit
+*AT is unique by lot, unit
+
+*t_F: duration of storage at the facility by lot (in days)
+*T_F: temperature during storage at the facility by lot, same for all units within same lot (in Celsius)
+
+*t_T: duration of transportation from facility to the retail store by lot (in days)
+*T_T: temperature during stransportation from facility to the retail store by lot (in Celsius)
+
+*t_S: duration of storage/display at the retail store by lot (in days)
+*T_S: temperature during storage/display at the retail store by lot (in Celsius)
+
+*t_T2: duration of transportation from retail store to homes by lot (in days)
+*T_T2: temperature during transportation from retail store to homes by lot (in Celsius)
+
+*t_H: duration of storage at homes by lot (in days)
+*T_H: temperature during store at homes by lot (in Celsius)
+
+
+```{r}
+set.seed(123)
+## Set the number of lots and containers ###################################################################
+n_sim = 1000
+n_units = 10
+
+lot_id = rep(seq(1, n_sim), each = n_units)
+unit_id = rep(seq(1,n_units), times = n_sim) 
+ModelData = tibble(lot_id, unit_id)
+
+## Set the initial spore concentration #####################################################################
+## get initial count
+spore_log10MPN_samp  = rnorm(n_sim, Log10InitConc_mean, Log10InitConc_sd) 
+## Convert log10 MPN/mL to MPN/mL
+spore_MPN_samp <- 10^spore_log10MPN_samp
+## Convert MPN for each 1900 mL milk container
+spore_MPN_samp_halfgal <- spore_MPN_samp * 1900
+#Sample the MPN_init distribution
+spore_MPN_init<-vector()
+for (i in 1:n_sim){
+  spore_MPN_init_samp <-rep(rpois(n_units, spore_MPN_samp_halfgal[i]))
+  spore_MPN_init<-c(spore_MPN_init, spore_MPN_init_samp)}
+# First convert spore_MPN_init from half-gallon to mLs
+spore_MPN_init[spore_MPN_init < 1] = 0
+spore_MPN_init_mL = spore_MPN_init / 1900
+# Remove 0's from the data and replace with detection limit
+spore_MPN_init_mL[spore_MPN_init_mL <= 0 ] = 0.01
+
+
+ModelData$log10InitConc = log10(spore_MPN_init_mL)
+
+## Assign AT and Nmaxto each milk container ########################################################################
+AT = vector()
+for (i in 1:(n_units * n_sim)){
+    AT_samp = sample(ATfreq, 1,replace = T)
+    while(AT_samp == "AT_23" || AT_samp == "AT_159"){
+      AT_samp = sample(ATfreq, 1,replace = T)}
+    AT[i] = AT_samp
+  }
+
+ModelData$AT = AT
+ModelData$AT_index = match(ModelData$AT, GrowthParas$rpoBAT)
+ModelData$log10Nmax = GrowthParas$LOG10Nmax[ModelData$AT_index]
+
+## Simulate temperature and time for each supply chain stage ###############################################
+#stage1, storage at facility
+ModelData$T_F = rep(runif(n_sim, min = 3.5, max = 4.5), each = n_units) # temp
+ModelData$t_F = rep(runif(n_sim, min = 1, max = 2), each = n_units)     # time
+
+#stage2, transport to retail store
+ModelData$T_T = rep(rtri(n_sim, min = 1.7, max = 10.0, mode = 4.4), each = n_units) # temp
+ModelData$t_T = rep(rtri(n_sim, min = 1, max = 10, mode = 5), each = n_units)       # time
+
+#stage3, storage/display at retail store
+ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 5.4, mean = 2.3, sd = 1.8), each = n_units)       # temp
+ModelData$t_S = rep(rtruncnorm(n_sim, a = 0.042, b = 10.0, mean = 1.821, sd = 3.3), each = n_units)   # time
+
+#stage4, transport from retail store to homes
+ModelData$T_T2 = rep(rtruncnorm(n_sim, a = 0, b = 10, mean = 8.5, sd = 1.0), each = n_units)          # temp
+ModelData$t_T2 = rep(rtruncnorm(n_sim, a = 0.01, b = 0.24, mean = 0.04, sd = 0.02), each = n_units)   # time
+
+#stage5, storage at homes
+temps = vector()
+for (i in 1:(n_sim*n_units)){
+  number <- rlaplace(1,m=4.06,s=2.31)
+  while (number > 15 | number < -1) {
+    number <- rlaplace(1,m=4.06,s=2.31) #make sure that this cannot be >15 or < -1
+  }
+  temps[i] <- number
+}
+
+ModelData$T_H = temps 
+```
+
+### what-if scenarios 
+
+
+### set up lag time and mumax at each supply chain stage
+
+*newLag_F (new lag parameter for T_F for AT)
+*newMu_F (new mumax parameter for T_F for AT)
+
+*newLag_T (new lag parameter for T_T for AT)
+*newMu_T (new mumax parameter for T_T for AT)
+
+*newLag_S (new lag parameter for T_S for AT)
+*newMu_S (new mumax parameter for T_S for AT)
+
+*newLag_T2 (new lag parameter for T_T2 for AT)
+*newMu_T2 (new mumax parameter for T_T2 for AT)
+
+*newLag_H (new lag parameter for T_H for AT)
+*newMu_H (new mumax parameter for T_H for AT)
+
+```{r}
+# stage1, storage at facility
+ModelData$newLag_F = lagAtNewTemp(ModelData$T_F, GrowthParas$lag[ModelData$AT_index])
+ModelData$newMu_F =  muAtNewTemp(ModelData$T_F, GrowthParas$mumax[ModelData$AT_index])
+
+# stage2, transport to retail store
+ModelData$newLag_T = lagAtNewTemp(ModelData$T_T, GrowthParas$lag[ModelData$AT_index])
+ModelData$newMu_T =  muAtNewTemp(ModelData$T_T, GrowthParas$mumax[ModelData$AT_index])
+
+# stage3, storage/display at retail store
+ModelData$newLag_S = lagAtNewTemp(ModelData$T_S, GrowthParas$lag[ModelData$AT_index])
+ModelData$newMu_S =  muAtNewTemp(ModelData$T_S, GrowthParas$mumax[ModelData$AT_index])
+
+# stage4, transport from retail store to homes
+ModelData$newLag_T2 = lagAtNewTemp(ModelData$T_T2, GrowthParas$lag[ModelData$AT_index])
+ModelData$newMu_T2 =  muAtNewTemp(ModelData$T_T2, GrowthParas$mumax[ModelData$AT_index])
+
+# stage5, storage at homes
+ModelData$newLag_H = lagAtNewTemp(ModelData$T_H, GrowthParas$lag[ModelData$AT_index])
+ModelData$newMu_H =  muAtNewTemp(ModelData$T_H, GrowthParas$mumax[ModelData$AT_index])
+```
+
+### model bacterial growth
+```{r}
+# stage1, storage at facility
+ModelData = ModelData %>%
+  rowwise() %>% 
+  mutate(predConc_F = log10N_func(t = t_F, lag = newLag_F, mumax = newMu_F,
+                                LOG10N0 = log10InitConc, LOG10Nmax = log10Nmax))
+
+# stage2, transport to retail store
+ModelData = ModelData %>% 
+  rowwise() %>% 
+  mutate(Lag_T = max(0, 1 - t_F/newLag_F) * newLag_T) %>%  
+  mutate(Mu_T = if_else(T_T >= T_F * 0.75 & T_T <= T_F * 1.25, newMu_F, newMu_T)) %>% 
+  mutate(predConc_T = log10N_func(t = t_T, lag = Lag_T, mumax = Mu_T,
+                                LOG10N0 = predConc_F, LOG10Nmax = log10Nmax))
+
+# stage3, storage/display at retail store
+ModelData = ModelData %>% 
+  rowwise() %>% 
+  mutate(Lag_S = max(0, 1 - t_T/Lag_T) * newLag_S) %>%  
+  mutate(Mu_S = if_else(T_S >= T_T * 0.75 & T_S <= T_T * 1.25, newMu_T, newMu_S)) %>% 
+  mutate(predConc_S = log10N_func(t = t_S, lag = Lag_S, mumax = Mu_S,
+                                LOG10N0 = predConc_T, LOG10Nmax = log10Nmax))
+
+# stage4, transport from retail store to homes
+ModelData = ModelData %>% 
+  rowwise() %>% 
+  mutate(Lag_T2 = max(0, 1 - t_S/Lag_S) * newLag_T2) %>%  
+  mutate(Mu_T2 = if_else(T_T2 >= T_S * 0.75 & T_T2 <= T_S * 1.25, newMu_S, newMu_T2)) %>% 
+  mutate(predConc_T2 = log10N_func(t = t_T2, lag = Lag_T2, mumax = Mu_T2,
+                                LOG10N0 = predConc_S, LOG10Nmax = log10Nmax))
+
+# stage5, storage at homes
+ModelData = ModelData %>% 
+  slice(rep(1:n(), each = 35)) 
+
+ModelData$t_H = rep(1:35, times = n_sim * n_units)
+
+ModelData = ModelData %>% 
+  rowwise() %>% 
+  mutate(Lag_H = max(0, 1 - t_T2/Lag_T2) * newLag_H) %>%  
+  mutate(Mu_H = if_else(T_H >= T_T2 * 0.75 & T_H <= T_T2 * 1.25, newMu_T2, newMu_H)) %>% 
+  mutate(predConc_H = log10N_func(t = t_H, lag = Lag_H, mumax = Mu_H,
+                                LOG10N0 = predConc_T2, LOG10Nmax = log10Nmax))
+
+# Assign the spoilage to each milk container at each day
+ModelData = ModelData %>% 
+  rowwise() %>% 
+  mutate(spoil = predConc_H > log10(20000))
+
+end = Sys.time()
+end - start
+```
+
+
+
+## 5. Validation
+
+# Sanity check
+* Use Ariel's validation dataset to check if new modification can be validated.
+```{r, eval=FALSE}
+#source("Validation/Sanity check.R", print.eval = T)
+```
+
+# Optimization
+* Model optimization under temp shifts
+* Raw milk source = NY
+* AT distribution = NY
+```{r, message=T, warning=T, eval=T}
+#opti_summary = vector()
+#for (Tmin in (seq(0.8,1.4, by=0.05))){
+#  lagAtNewTemp = function (newTemp, oldLag, oldTemp = 6, T0 = Tmin) {
+#  numerator = oldTemp -T0
+#  denom = newTemp - T0
+#  newLag = ( (numerator / denom)^2) * oldLag
+#  return(newLag)
+#}
+source("Validation/Optimization.R", print.eval = F)
+#metrics = c(Tmin, metric_mean, metric_med, metric_sd, metric_D)
+#opti_summary = rbind(opti_summary, metrics)
+#}
+#colnames(opti_summary) = c("Tmin", "metric_mean", "metric_med", "metric_sd", "metric_D")
+#opti_summary
+#write.csv(opti_summary, "performance_summary.csv")
+
+```
+
+# Validation
+```{r, eval=FALSE}
+source("Validation/Validation.R", print.eval = T)
+```
+
+
+
+## 6. Data analysis
+
+### Summary statistics
+```{r}
+# percentage of spoiled milk containers at each day of consumer storage
+ModelData %>% 
+  group_by(t_H) %>% 
+  summarise(perSpoil = sum(spoil) / (n_sim * n_units))
+```
+
+
+### Statistical analysis
+
+Sensitivity analysis (PRCC)
+- Following input model parameters are assessed:
+*t_F: duration of storage at the facilty by lot (in days)
+*T_F: temperature during storage at the facility by lot, same for all units within same lot (in Celsius)
+*t_T: duration of transportation from facility to the retail store by lot (in days)
+*T_T: temperature during stransportation from facility to the retail store by lot (in Celsius)
+*t_S: duration of storage/display at the retail store by lot (in days)
+*T_S: temperature during storage/display at the retail store by lot (in Celsius)
+*t_T2: duration of transportation from retail store to homes by lot (in days)
+*T_T2: temperature during transportation from retail store to homes by lot (in Celsius)
+*T_H: temperature during store at homes by lot (in Celsius)
+*spore_log10MPN_init_mL: initial spore count in milk (log10 MPN/mL)
+*sim_day: duration of storage at homes by lot (in days)
+
+```{r}
+# Partial rank correlation coeffcient
+sa_predictors = c("t_F","T_F", "t_T", "T_T","t_S", "T_S", "t_T2", "T_T2", "T_H", "log10InitConc")
+
+sa_df = ModelData %>% 
+  select(all_of(sa_predictors), spoil) %>% 
+  epi.prcc(., sided.test = 2) %>% 
+  mutate(var = sa_predictors)
+
+sa_df %>% ggplot(aes(x = reorder(var, est), y = est)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_classic() 
+
+
+# Random forest
+train.control = trainControl(method = "repeatedcv",
+                             number = 10,
+                             repeats = 3,
+                             search = "grid")
+
+spoiled = as.factor(dat2[,ncol(dat2)])
+cf.fit = train(x = dat2[,-ncol(dat2)],
+                y = spoiled,
+                method = "cforest",
+                metric = "Accuracy",
+                trControl = train.control)
+cf.fit
+
+crf = varImp(cf.fit)
+crf.imp = crf$importance
+crf.names = rownames(crf.imp)
+df = crf.imp$Overall
+names(df) = rownames(crf.imp)
+df = sort(df, decreasing = F)
+barplot(df, horiz = TRUE, names.arg = names(df), las=1, cex.names = 1, xlim = c(0,100))
+```
+
+
+
+
+
+
+

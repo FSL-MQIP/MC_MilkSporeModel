@@ -66,13 +66,13 @@ log10N_func <- function(t, lag, mumax, LOG10N0, LOG10Nmax, model_name="buchanan"
 # (ii) oldMu: Previous mu value to adjust
 # (iii) oldTemp: Temperature corresponding to previous mu; NOTE: If you don't specify "oldTemp", 
 #then automatically oldTemp = 6C; this value (6C) was the temp at which growth curve experiments were originally performed at)
-# (iv) T0: Parameter used to calculate new mu; NOTE: If you don't specify "T0", then automatically T0 = -3.62C; this value (-3.62C) 
+# (iv) Tmin: Parameter used to calculate new mu; NOTE: If you don't specify "Tmin", then automatically Tmin = -3.62C; this value (-3.62C) 
 #was determined using Ratkowsky's square root model and Paenibacillus ordorifer growth curves obtained at 4, 7, and 32C in BHI broth (N.H. Martin unpublished data)
 
 # Function:
-muAtNewTemp <- function(newTemp, oldMu, oldTemp = 6, T0 = -3.62) { 
-  numerator <- newTemp - T0
-  denom <- oldTemp - T0
+muAtNewTemp <- function(newTemp, oldMu, oldTemp = 6, Tmin = -3.62) { 
+  numerator <- newTemp - Tmin
+  denom <- oldTemp - Tmin
   newMu <- ((numerator / denom)^2) * oldMu
   
   return(newMu)
@@ -119,13 +119,13 @@ adjustLag <- function (t, oldLag, newLag, restartExp = T, adjustmentConstant = 0
 # (iii) oldLag: Previous lag value to adjust
 # (iv) oldTemp: Temperature corresponding to previous lag; NOTE: If you don't specify "oldTemp", 
 #then automatically oldTemp = 6C; this value (6C) was the temp at which growth curve experiments were originally performed at)
-# (v) T0: Parameter used to calculate new mu; NOTE: If you don't specify "T0", then automatically T0 = -3.62C; this value (-3.62C) 
+# (v) Tmin: Parameter used to calculate new mu; NOTE: If you don't specify "Tmin", then automatically Tmin = -3.62C; this value (-3.62C) 
 #was determined using Ratkowsky's square root model and Paenibacillus ordorifer growth curves obtained at 4, 7, and 32C in BHI broth (N.H. Martin unpublished data)
-# New T0 = 1.15
+# New Tmin = 1.15
 # Function:
-lagAtNewTemp <- function (newTemp, oldLag, oldTemp = 6, T0 = 1.15) {
-  numerator <- oldTemp -T0
-  denom <- newTemp - T0
+lagAtNewTemp <- function (newTemp, oldLag, oldTemp = 6, Tmin = -3.62) {
+  numerator <- oldTemp -Tmin
+  denom <- newTemp - Tmin
   newLag <- ( (numerator / denom)^2) * oldLag
   return(newLag)
 }
