@@ -49,8 +49,6 @@ InitConcData = read.csv("InputFiles/Baseline_InitialSporeCount.csv")
 
 ## 3. Process model parameters
 ```{r, warning=FALSE}
-start = Sys.time()
-
 ## Extract AT frequency 
 ATfreq = ATfreq %>% pull(ClosestAT)
 
@@ -133,16 +131,29 @@ spore_MPN_init_mL[spore_MPN_init_mL <= 0 ] = 0.01
 
 ModelData$log10InitConc = log10(spore_MPN_init_mL)
 
+#What-if scenario 1: Microfiltration
+#2.2 log reduction of psychrotolerant spores
+#ModelData$log10InitConc = ModelData$log10InitConc - 2.2
+
+#What-if scenario 2: Bactofugation I
+#1.4 log reduction of spores
+#ModelData$log10InitConc = ModelData$log10InitConc - 1.4
+
+#What-if scenario 3: Bactofugation II
+#2 log reduction of spores 
+#ModelData$log10InitConc = ModelData$log10InitConc - 2
+
+
 ## Assign AT and Nmaxto each milk container ########################################################################
-AT = vector()
+growthAT = vector()
 for (i in 1:(n_units * n_sim)){
     AT_samp = sample(ATfreq, 1,replace = T)
     while(AT_samp == "AT_23" || AT_samp == "AT_159"){
       AT_samp = sample(ATfreq, 1,replace = T)}
-    AT[i] = AT_samp
+    growthAT[i] = AT_samp
   }
 
-ModelData$AT = AT
+ModelData$AT = growthAT
 ModelData$AT_index = match(ModelData$AT, GrowthParas$rpoBAT)
 ModelData$log10Nmax = GrowthParas$LOG10Nmax[ModelData$AT_index]
 
@@ -174,27 +185,37 @@ for (i in 1:(n_sim*n_units)){
 }
 
 ModelData$T_H = temps 
-```
 
-### what-if scenarios 
+
+#What-if scenario 4: Manually reduce mean temp at facility 
+#ModelData$T_F = rep(runif(n_sim, min = 2.5, max = 3.5), each = n_units) 
+
+#What-if scenario 5: Extreme cooling
+#ModelData$T_F = rep(runif(n_sim, min = 0.5, max = 1.5), each = n_units)
+
+#What-if scenario 6: Improved cooling system at facility
+#ModelData$T_F = rep(runif(n_sim, min = 3.75, max = 4.25), each = n_units) 
+
+#What-if scenario 7: Temp alarm system in truck
+#ModelData$T_T = rep(rtri(n_sim, min = 1.7, max = 6.0, mode = 4.4), each = n_units)
+
+#What-if scenario 8: Optimize distribution routes
+#ModelData$t_T = rep(rtri(n_sim, min = 1, max = 7, mode = 5), each = n_units)
+
+#What-if scenario 9: Manually reduce mean temp at retail store
+#ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 5.4, mean = 1.8, sd = 1.8), each = n_units)
+
+#What-if scenario 10: Temp alarm system at retail store
+#ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 4, mean = 2.3, sd = 1.8), each = n_units)
+
+#What-if scenario 11: Improved cooling system at retail store
+ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 5.4, mean = 2.3, sd = 0.9), each = n_units) 
+
+```
 
 
 ### set up lag time and mumax at each supply chain stage
 
-*newLag_F (new lag parameter for T_F for AT)
-*newMu_F (new mumax parameter for T_F for AT)
-
-*newLag_T (new lag parameter for T_T for AT)
-*newMu_T (new mumax parameter for T_T for AT)
-
-*newLag_S (new lag parameter for T_S for AT)
-*newMu_S (new mumax parameter for T_S for AT)
-
-*newLag_T2 (new lag parameter for T_T2 for AT)
-*newMu_T2 (new mumax parameter for T_T2 for AT)
-
-*newLag_H (new lag parameter for T_H for AT)
-*newMu_H (new mumax parameter for T_H for AT)
 
 ```{r}
 # stage1, storage at facility
@@ -218,13 +239,14 @@ ModelData$newLag_H = lagAtNewTemp(ModelData$T_H, GrowthParas$lag[ModelData$AT_in
 ModelData$newMu_H =  muAtNewTemp(ModelData$T_H, GrowthParas$mumax[ModelData$AT_index])
 ```
 
-### model bacterial growth
+
+### Model bacterial growth
 ```{r}
 # stage1, storage at facility
 ModelData = ModelData %>%
   rowwise() %>% 
   mutate(predConc_F = log10N_func(t = t_F, lag = newLag_F, mumax = newMu_F,
-                                LOG10N0 = log10InitConc, LOG10Nmax = log10Nmax))
+                                  LOG10N0 = log10InitConc, LOG10Nmax = log10Nmax))
 
 # stage2, transport to retail store
 ModelData = ModelData %>% 
@@ -232,7 +254,7 @@ ModelData = ModelData %>%
   mutate(Lag_T = max(0, 1 - t_F/newLag_F) * newLag_T) %>%  
   mutate(Mu_T = if_else(T_T >= T_F * 0.75 & T_T <= T_F * 1.25, newMu_F, newMu_T)) %>% 
   mutate(predConc_T = log10N_func(t = t_T, lag = Lag_T, mumax = Mu_T,
-                                LOG10N0 = predConc_F, LOG10Nmax = log10Nmax))
+                                  LOG10N0 = predConc_F, LOG10Nmax = log10Nmax))
 
 # stage3, storage/display at retail store
 ModelData = ModelData %>% 
@@ -240,7 +262,7 @@ ModelData = ModelData %>%
   mutate(Lag_S = max(0, 1 - t_T/Lag_T) * newLag_S) %>%  
   mutate(Mu_S = if_else(T_S >= T_T * 0.75 & T_S <= T_T * 1.25, newMu_T, newMu_S)) %>% 
   mutate(predConc_S = log10N_func(t = t_S, lag = Lag_S, mumax = Mu_S,
-                                LOG10N0 = predConc_T, LOG10Nmax = log10Nmax))
+                                  LOG10N0 = predConc_T, LOG10Nmax = log10Nmax))
 
 # stage4, transport from retail store to homes
 ModelData = ModelData %>% 
@@ -248,7 +270,7 @@ ModelData = ModelData %>%
   mutate(Lag_T2 = max(0, 1 - t_S/Lag_S) * newLag_T2) %>%  
   mutate(Mu_T2 = if_else(T_T2 >= T_S * 0.75 & T_T2 <= T_S * 1.25, newMu_S, newMu_T2)) %>% 
   mutate(predConc_T2 = log10N_func(t = t_T2, lag = Lag_T2, mumax = Mu_T2,
-                                LOG10N0 = predConc_S, LOG10Nmax = log10Nmax))
+                                   LOG10N0 = predConc_S, LOG10Nmax = log10Nmax))
 
 # stage5, storage at homes
 ModelData = ModelData %>% 
@@ -261,53 +283,85 @@ ModelData = ModelData %>%
   mutate(Lag_H = max(0, 1 - t_T2/Lag_T2) * newLag_H) %>%  
   mutate(Mu_H = if_else(T_H >= T_T2 * 0.75 & T_H <= T_T2 * 1.25, newMu_T2, newMu_H)) %>% 
   mutate(predConc_H = log10N_func(t = t_H, lag = Lag_H, mumax = Mu_H,
-                                LOG10N0 = predConc_T2, LOG10Nmax = log10Nmax))
+                                  LOG10N0 = predConc_T2, LOG10Nmax = log10Nmax))
 
 # Assign the spoilage to each milk container at each day
 ModelData = ModelData %>% 
   rowwise() %>% 
   mutate(spoil = predConc_H > log10(20000))
-
-end = Sys.time()
-end - start
 ```
 
 
 
 ## 5. Validation
 
-# Sanity check
+# Validation 1
 * Use Ariel's validation dataset to check if new modification can be validated.
 ```{r, eval=FALSE}
-#source("Validation/Sanity check.R", print.eval = T)
+# Initial validation
+# Use validation dataset from previous model (Buehler et al., 2018) to validate the modification.
+Val1Data = tibble(SampleID = 1:1000)
+
+Val1Data$AT = sample(growthAT, 1000, replace = T)
+Val1Data$AT_index = match(Val1Data$AT, GrowthParas$rpoBAT)
+Val1Data$log10Nmax = GrowthParas$LOG10Nmax[Val1Data$AT_index]
+Val1Data$mumax = GrowthParas$mumax[Val1Data$AT_index]
+Val1Data$lag = GrowthParas$lag[Val1Data$AT_index]
+Val1Data$DayInit = rnorm(1000, mean = Log10InitConc_mean, sd = Log10InitConc_sd)
+
+Val1Data = Val1Data %>% 
+  mutate(predDay14 = log10N_func(t = 14, lag = lag, mumax = mumax, 
+                                 LOG10N0 = DayInit, LOG10Nmax = log10Nmax),
+         predDay21 = log10N_func(t = 21, lag = lag, mumax = mumax, 
+                                 LOG10N0 = DayInit, LOG10Nmax = log10Nmax))
+  
+
+
+pred_counts_14 = Val1Data %>% filter(predDay14 > 1) %>% pull(predDay14)
+pred_counts_21 = Val1Data %>% filter(predDay21 > 1) %>% pull(predDay21)
+
+# load validation dataset
+VSL_import_14 <- read.csv("InputFiles/ValidationData1_d14.csv")
+VSL_import_21 <- read.csv("InputFiles/ValidationData1_d21.csv")
+VSL_counts_14 <- VSL_import_14$log_VSL_D14
+VSL_counts_21 <- VSL_import_21$log_VSL
+ks.test(pred_counts_14, VSL_counts_14)
+ks.test(pred_counts_21, VSL_counts_21)
+
+#summary(pred_counts)
+#sd(pred_counts)
+#summary(VSL_counts)
+#sd(VSL_counts)
+
+pred_14 = cbind(rep("Simulated", length(pred_14)),pred_14)
+pred_14 = as.data.frame(pred_14)
+names(pred_14) = c("Type","counts")
+VSL_14 = cbind(rep("Actual", length(VSL_14)), VSL_14)
+VSL_14 = as.data.frame(VSL_14)
+names(VSL_14) = c("Type","counts")
+val_data_14 = rbind(pred_14,VSL_14)
+val_data_14$counts = as.numeric(val_data_14$counts)
+
+ggplot(data = val_data_14, aes(x=Type,y=counts))+
+  geom_boxplot()+
+  coord_flip()+
+  theme_bw()+
+  theme(axis.title.y = element_blank())
+ggsave("Figures/Fig2.Val1_boxplot.tiff", height = 2, width = 8, units = "in", dpi = "retina")
+
+ggplot(data = val_data_14, aes(x=counts))+
+  stat_ecdf(aes(linetype=Type))+
+  theme_bw()+
+  theme(legend.position = c(0.8, 0.2))+
+  labs(x=expression(paste(LOG[10],CFU/mL)), y= "Density")
+ggsave("Figures/Fig2.Val1_cumulative density.tiff", height = 4, width = 8, units = "in", dpi = "retina")
+
 ```
 
-# Optimization
-* Model optimization under temp shifts
-* Raw milk source = NY
-* AT distribution = NY
-```{r, message=T, warning=T, eval=T}
-#opti_summary = vector()
-#for (Tmin in (seq(0.8,1.4, by=0.05))){
-#  lagAtNewTemp = function (newTemp, oldLag, oldTemp = 6, T0 = Tmin) {
-#  numerator = oldTemp -T0
-#  denom = newTemp - T0
-#  newLag = ( (numerator / denom)^2) * oldLag
-#  return(newLag)
-#}
-source("Validation/Optimization.R", print.eval = F)
-#metrics = c(Tmin, metric_mean, metric_med, metric_sd, metric_D)
-#opti_summary = rbind(opti_summary, metrics)
-#}
-#colnames(opti_summary) = c("Tmin", "metric_mean", "metric_med", "metric_sd", "metric_D")
-#opti_summary
-#write.csv(opti_summary, "performance_summary.csv")
 
-```
-
-# Validation
+# Validation 2 and 3
 ```{r, eval=FALSE}
-source("Validation/Validation.R", print.eval = T)
+source("Validation/Validations.R", print.eval = T)
 ```
 
 
@@ -317,9 +371,27 @@ source("Validation/Validation.R", print.eval = T)
 ### Summary statistics
 ```{r}
 # percentage of spoiled milk containers at each day of consumer storage
-ModelData %>% 
-  group_by(t_H) %>% 
-  summarise(perSpoil = sum(spoil) / (n_sim * n_units))
+spoilData = ModelData %>% 
+    group_by(t_H) %>% 
+    summarise(perSpoil = sum(spoil) / (n_sim * n_units)) 
+
+spoilData
+(spoilData %>% filter(t_H %in% c(14, 21)) %>% pull(perSpoil) - c(0.286, 0.443)) *100
+
+#spoilData %>% 
+#  ggplot(aes(x = t_H, y = perSpoil*100)) +
+#  geom_line() +
+#  labs(y="Percentage of spoiled half-gallon milk (%)",
+#       x="Consumer storage time (Days)") +
+#  theme_classic()
+#ggsave("Figures/Fig5.Baseline.tiff", height = 4, width = 8, units = "in", dpi = "retina")
+
+
+## spore-former concentration by 14- and 21-day consumer storage
+#ModelData %>% 
+#  filter(t_H == 14 | t_H == 21) %>% 
+#  group_by(t_H) %>% 
+#  summarise(mean_conc = mean(predConc_H))
 ```
 
 
@@ -344,6 +416,7 @@ Sensitivity analysis (PRCC)
 sa_predictors = c("t_F","T_F", "t_T", "T_T","t_S", "T_S", "t_T2", "T_T2", "T_H", "log10InitConc")
 
 sa_df = ModelData %>% 
+  filter(t_H == 21) %>% 
   select(all_of(sa_predictors), spoil) %>% 
   epi.prcc(., sided.test = 2) %>% 
   mutate(var = sa_predictors)
@@ -351,30 +424,46 @@ sa_df = ModelData %>%
 sa_df %>% ggplot(aes(x = reorder(var, est), y = est)) +
   geom_bar(stat = "identity") +
   coord_flip() +
+  scale_x_discrete(labels = c(expression("T"["T2"]), expression("t"["F"]), expression("T"["F"]),
+                              expression("t"["T2"]), expression("T"["S"]), expression("t"["S"]),
+                              expression("t"["T"]), expression("N"[0]), expression("T"["T"]),
+                              expression("T"["H"]))) +
+  labs(x="Input parameters",
+       y="Partial rank corrrelation coefficient") +
   theme_classic() 
 
+ggsave("Figures/Fig6.PRCC.tiff", height = 4, width = 8, units = "in", dpi = "retina")
 
 # Random forest
 train.control = trainControl(method = "repeatedcv",
                              number = 10,
-                             repeats = 3,
-                             search = "grid")
+                             repeats = 3)
 
-spoiled = as.factor(dat2[,ncol(dat2)])
-cf.fit = train(x = dat2[,-ncol(dat2)],
-                y = spoiled,
+rf_x = ModelData %>% filter(t_H == 21) %>% select(all_of(sa_predictors)) %>% as.data.frame()
+rf_y = ModelData %>% filter(t_H == 21) %>% pull(spoil) %>% as.factor()
+
+cf.fit = train(x = rf_x,
+                y = rf_y,
                 method = "cforest",
                 metric = "Accuracy",
                 trControl = train.control)
 cf.fit
 
 crf = varImp(cf.fit)
-crf.imp = crf$importance
-crf.names = rownames(crf.imp)
-df = crf.imp$Overall
-names(df) = rownames(crf.imp)
-df = sort(df, decreasing = F)
-barplot(df, horiz = TRUE, names.arg = names(df), las=1, cex.names = 1, xlim = c(0,100))
+crf_df = tibble(var = rownames(crf$importance), imp = crf$importance$Overall)
+
+crf_df %>% ggplot(aes(x = reorder(var, imp), y = imp)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_x_discrete(labels = c(expression("T"["T2"]), expression("T"["F"]), expression("t"["T2"]),
+                              expression("t"["F"]), expression("T"["S"]), expression("t"["S"]),
+                              expression("t"["T"]), expression("N"[0]), expression("T"["T"]),
+                              expression("T"["H"]))) +
+  labs(x="Input parameters",
+       y="Variable importance") +
+  theme_classic() 
+
+ggsave("Figures/Fig6.Random forest.tiff", height = 4, width = 8, units = "in", dpi = "retina")
 ```
 
 

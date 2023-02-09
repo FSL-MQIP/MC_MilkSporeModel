@@ -159,7 +159,7 @@ v. Storage at home
 *newMu_H (new mumax parameter for T_H for AT)
 
 ```{r}
-n_sim <- 1000 #aka n_lot 
+n_sim <- 100 #aka n_lot 
 n_units <- 10
 
 lot_id <- rep(seq(1, n_sim), each = n_units)
