@@ -103,7 +103,7 @@ v. Storage at home
 ```{r}
 set.seed(123)
 ## Set the number of lots and containers ###################################################################
-n_sim = 1000
+n_sim = 100
 n_units = 10
 
 lot_id = rep(seq(1, n_sim), each = n_units)
@@ -209,7 +209,7 @@ ModelData$T_H = temps
 #ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 4, mean = 2.3, sd = 1.8), each = n_units)
 
 #What-if scenario 11: Improved cooling system at retail store
-ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 5.4, mean = 2.3, sd = 0.9), each = n_units) 
+#ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 5.4, mean = 2.3, sd = 0.9), each = n_units) 
 
 ```
 
@@ -333,10 +333,10 @@ ks.test(pred_counts_21, VSL_counts_21)
 #summary(VSL_counts)
 #sd(VSL_counts)
 
-pred_14 = cbind(rep("Simulated", length(pred_14)),pred_14)
+pred_14 = cbind(rep("Simulated", length(pred_counts_14)),pred_counts_14)
 pred_14 = as.data.frame(pred_14)
 names(pred_14) = c("Type","counts")
-VSL_14 = cbind(rep("Actual", length(VSL_14)), VSL_14)
+VSL_14 = cbind(rep("Actual", length(VSL_counts_14)), VSL_counts_14)
 VSL_14 = as.data.frame(VSL_14)
 names(VSL_14) = c("Type","counts")
 val_data_14 = rbind(pred_14,VSL_14)

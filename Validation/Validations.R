@@ -10,11 +10,12 @@ TX = read.csv("InputFiles/ValidationData2.csv", header = TRUE)
 TX_AT = read.csv("InputFiles/Texas_ATFreq.csv")
 TX_ATfreq = TX_AT$AT
 TX_ATfreq = ifelse(TX_ATfreq == 3513, 513, TX_ATfreq) #assigning 3513 to 3 only
+TX_ATfreq = TX_ATfreq[!TX_ATfreq %in% c(23, 159)]
 
 
 ########################################################################### TX Dataset ###############################################################
 # TX Validation data cleaning
-nsim = 1000
+nsim = 10000
 TX = TX[TX$CVTA=="N" &  TX$Day != 17 & TX$Day != 49 & TX$Day != 63,]
 TX.Val = tibble(rep(TX$Day, nsim), rep(TX$Storage_Temp,nsim), rep(TX$APC,nsim))
 names(TX.Val) = c("Day","Storage_Temp","APC")
@@ -33,7 +34,7 @@ TX.Microflora = TX.Val %>% filter(Day == 0) %>% pull(APC) %>% mean()
 
 TX.Val$Pred = log10N_func(TX.Val$Day, TX.Val$Lag, TX.Val$Mu, TX.Val$Log10_DayInt, TX.Val$Nmax)
 TX.Val$PredAdj = log10(10^TX.Val$Pred + TX.Microflora)
-TX.Val$Actual = log10(TX.Val$APC + 1)
+TX.Val$Actual = ifelse(TX.Val$APC == 0, log10(2.5), log10(TX.Val$APC))
 
 TX.Val$Day = as.factor(TX.Val$Day)
 TX.Val_tidy = pivot_longer(TX.Val, c(PredAdj, Actual), names_to = "Type", values_to = "Count")
@@ -140,7 +141,7 @@ ggsave("Figures/Fig3.Val2_TX_10C.tiff", height = 3, width = 8, units = "in", dpi
 
 ############################################################## NY Dataset ######################################################
 NY = read.csv("InputFiles/ValidationData3.csv", header = TRUE)
-NY.Val = NY[NY$PPC == "N" & NY$Storage_Temp != "SC",]
+NY.Val = NY[NY$PPC == "N" & NY$Storage_Temp != "SC" & NY$Day != 42,]
 NY.Val$Storage_Temp = as.numeric(NY.Val$Storage_Temp)
 NY.Val$APC = as.numeric(NY.Val$APC)
 NY.Val = data.frame(rep(NY.Val$Source.ID, 100), rep(NY.Val$Day, 100), rep(NY.Val$Storage_Temp,100), rep(NY.Val$APC,100))
@@ -174,7 +175,7 @@ NY.Val$Pred = log10N_func(NY.Val$Day, NY.Val$Lag, NY.Val$Mu, NY.Val$Log10_DayInt
 NY.Val$PredAdj = ifelse(NY.Val$Source.ID == "SU1", 
                         log10(10^NY.Val$Pred + NY.Microflora.SU1),
                         log10(10^NY.Val$Pred + NY.Microflora.SU2))
-NY.Val$Actual = log10(NY.Val$APC + 1)
+NY.Val$Actual = ifelse(NY.Val$APC == 0, log10(2.5), log10(NY.Val$APC))
 
 
 NY.Val_tidy = pivot_longer(NY.Val, c(PredAdj, Actual), names_to = "Type", values_to = "Count")
@@ -218,8 +219,8 @@ ggplot(data = NY.Val_T6, aes(x=Day, y=Count, fill=Type))+
 ggsave("Figures/Fig4.Val3_NY_6C.tiff", height = 3, width = 8, units = "in", dpi = "retina")
 
 ### simulated SC
-nsim = 1000
-NY.Val.SC = NY[NY$PPC == "N" & NY$Storage_Temp == "SC",]
+nsim = 10000
+NY.Val.SC = NY[NY$PPC == "N" & NY$Storage_Temp == "SC" & NY$Day != 42,]
 NY.Val.SC$APC = as.numeric(NY.Val.SC$APC)
 NY.Val.SC = data.frame(rep(NY.Val.SC$Source.ID, each = nsim),
                        rep(NY.Val.SC$Day, each = nsim), 
@@ -272,7 +273,7 @@ NY.Val.SC$Pred = log10N_func(NY.Val.SC$Day-41/24-1-26/60/24, NY.Val.SC$Lag_4 * N
 NY.Val.SC$PredAdj = ifelse(NY.Val.SC$Source.ID == "SU1", 
                            log10(10^NY.Val.SC$Pred + NY.Microflora.SU1),
                            log10(10^NY.Val.SC$Pred + NY.Microflora.SU2))
-NY.Val.SC$Actual = log10(NY.Val.SC$APC + 1)
+NY.Val.SC$Actual = ifelse(NY.Val.SC$APC == 0, log10(2.5), log10(NY.Val.SC$APC))
 NY.Val.SC$Day = as.factor(NY.Val.SC$Day)
 NY.Val.SC_tidy = pivot_longer(NY.Val.SC, c(PredAdj, Actual), names_to = "Type", values_to = "Count")
 
