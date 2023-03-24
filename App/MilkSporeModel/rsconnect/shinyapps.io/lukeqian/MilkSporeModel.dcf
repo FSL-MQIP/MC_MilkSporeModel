@@ -5,9 +5,9 @@ account: lukeqian
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 6195882
-bundleId: 5983159
+bundleId: 6969214
 url: https://lukeqian.shinyapps.io/MilkSporeModel/
-when: 1654547444.97408
-lastSyncTime: 1654547444.97408
+when: 1679019033.28082
+lastSyncTime: 1679019033.28084
 asMultiple: FALSE
 asStatic: FALSE

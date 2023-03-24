@@ -69,7 +69,7 @@ body =  dashboardBody(
                   of half-gallon fluid milk due to psychrotolerant spore-forming bacteria. This model allows the user to 
                   1) input the concentration of psychrotolerant spore-formers in pasteurized half-gallon milk, 2) define a spoilage threshold 
                   level, and 3) select various intervention strategies. As a result, the model will simulate the 
-                  percent of spoiled half-gallon milk containers over selected storage time. Click the", strong('Model'), "tab to start!"),
+                  percent of spoiled half-gallon milk containers over 35 days of consumer storage. Click the", strong('Model'), "tab to start!"),
                 h3("Developers"),
                 p("This web app is developed by researchers from", strong("Milk Quality Improvement Lab (MQIP)") ,"in the 
                   department of food science at", strong("Cornell University"),". Our lab aims to leverage digital tools to 
@@ -140,19 +140,29 @@ body =  dashboardBody(
                       numericInput("count_sd", "What is the standard deviation of spore concentration (log10 MPN/mL) in milk?", value = 0.99),
                       selectInput("threshold","Spoilage threshold", c("US regulation limit (Pasteurized Milk Ordinance): 20,000 CFU/mL" = log10(20000), 
                                                                       "Limit for consumer to detect the defects: 1,000,000 CFU/mL" = log10(1000000))),
-                      sliderInput("day", "How many days of shelf life during consumer storage to simulate?",3,35, value=21, step=1),
-                      h5(strong("Select intervention strategies that reduce bacteria load")),
-                      checkboxInput("mf","Microfiltration (2.2log reduction)", value=FALSE),
-                      checkboxInput("bf1","Bactofugation single-pass (1.4log reduction)", value=FALSE),
-                      checkboxInput("bf2","Bactofugation double-pass (2log reduction)", value=FALSE),
+                      h5("The shelf life is defined as the last day at which a certain percentage (%) of spoiled milk containers exceeding the spoilage threshold."),
+                      sliderInput("shelfLife_threshold", "Set this percentage (%)", value = 50, min = 0, max = 100),
+                      radioButtons("sporeRed", HTML("Select intervention strategies that reduce bacteria load"),
+                                   c("No intervention" = "none",
+                                     "Microfiltration (2.2log reduction)" = "mf",
+                                     "Bactofugation single-pass (1.4log reduction)" = "bf1",
+                                     "Bactofugation double-pass (2log reduction)" = "bf2")),
                       h5(strong("Select intervention strategies that improve the temperature control")),
-                      em("Facility"),
-                      checkboxInput("f_reduceT", "Set storage temperature from 4 to 3 \u00B0C", value = FALSE),
-                      checkboxInput("f_supercool", "Implement supercooling (reduce temperature from 4 to 1 \u00B0C)", value = FALSE),
-                      em("Retail"),
-                      checkboxInput("r_reduceT", "Reduce average (mean) storage temperature from 2.3 to 1.8 \u00B0C", value = FALSE),
-                      checkboxInput("r_alarm", "Set alarming system to limit temperature below 4 \u00B0C", value = FALSE),
-                      submitButton("Submit" ,icon("refresh"))),
+                      radioButtons("f_intervention", HTML("<em>Facility storage</em>"),
+                                         c("No intervention" = "none",
+                                           "Set storage temperature from 4 to 3 \u00B0C" = "f_reduceT",
+                                           "Implement extreme cooling (reduce temperature from 4 to 1 \u00B0C)" = "f_supercool",
+                                           "Improve the cooling system to reduce temperature variability" = "f_reduceVar")),
+                      radioButtons("ftr_intervention", HTML("<em>Facility-to-retail transportation</em>"),
+                                         c("No intervention" = "none",
+                                           "Set a temperature alarm system in delivery truncks" = "ftr_alarm",
+                                           "Optimize distribution routes to shorten delivery time" = "ftr_opt")),
+                      radioButtons("r_intervention", HTML("<em>Retail storage</em>"),
+                                         c("No intervention" = "none",
+                                           "Reduce average (mean) storage temperature from 2.3 to 1.8 \u00B0C" = "r_reduceT",
+                                         "Set a temperature alarm system to limit temperature below 4 \u00B0C" = "r_alarm",
+                                         "Improve refrigeration system to reduce temperature variability" = "r_reduceVar")),
+                      submitButton("Submit" ,icon("refresh"))), 
                   
     
                   box(
@@ -163,8 +173,7 @@ body =  dashboardBody(
                     height = "100%",
                     #Histogram and predicted percent spoilage
                     withSpinner(plotOutput("plot"), color = "#B31B1B"),
-                    #h5("Predicted percent spoilage at selected shelf life (%)"),
-                    #verbatimTextOutput("rawdata")
+                    h3(textOutput("shelfLife"))
                     )
               )
         ),

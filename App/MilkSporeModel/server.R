@@ -2,7 +2,6 @@
 # load packages
 library(shiny)
 library(readr)
-library(tidyverse)
 library(censReg)
 library(fitdistrplus)
 library(splitstackshape)
@@ -11,6 +10,7 @@ library(truncnorm)
 library(EnvStats)
 library(epiR)
 library(stats)
+library(tidyverse)
 
 # load functions
 source("UtilityFunctions.R")
@@ -21,89 +21,75 @@ set.seed(1)
 
 ######################################## 2. Prepare input files ##########################################
 # load input files
-## (a) AT/ST frequency data 
-spore_ATfrequency_file <- "InputFiles/Baseline_ATFreq.csv"
-spore_ATfreq_import <- read.csv(spore_ATfrequency_file, stringsAsFactors = FALSE, header = TRUE)
+## AT frequency data (from Ariel_2017MC_SporeModel on MC-2020 on GitHub)
+ATfreq = read.csv("InputFiles/Baseline_ATFreq.csv", stringsAsFactors = FALSE, header = TRUE)
 
-## (b) growth parameter data
-spore_growth_file <- "InputFiles/GrowthParameters_NoGrowthATs.csv" 
-spore_growth_import <-read.csv(spore_growth_file, stringsAsFactors = FALSE)
+## growth parameter data; make sure this contains growth parameters & growth model name
+GrowthParas = read.csv("InputFiles/GrowthParameters_NoGrowthATs.csv" , stringsAsFactors = FALSE)
 
-## (c) initial microbial count data 
-spore_init_file <- read.csv("InputFiles/Baseline_InitialSporeCount.csv")
-
-
-# Modify input files
-spore_ATfreq_import$temp <- "AT"
-spore_ATfreq_import$ClosestAT <- paste(spore_ATfreq_import$temp,spore_ATfreq_import$ClosestAT,sep="_")
-
-spore_growth_import <- spore_growth_import %>%
-  .[c(1:5)]%>%
-  rename(STorAT = rpoBAT)
-spore_growth_import$model_name <- "buchanan" 
-spore_growth_import$temp <- "AT"
-spore_growth_import$STorAT <- paste(spore_growth_import$temp,spore_growth_import$STorAT,sep="_")
+## initial microbial count data (from Ariel_2017MC_SporeModel on MC-2020 on GitHub)
+InitConcData = read.csv("InputFiles/Baseline_InitialSporeCount.csv")
 
 
 ######################################## 3. Organize model parameters ####################################
-# (a) Initial contamination: logMPN normal distribution
-spore_init_file$log10left <- log10(spore_init_file$left)
-spore_init_file$log10right <- log10(spore_init_file$right)
-spore_init_file$log10MPN <- log10(spore_init_file$MPN)
-cens_data <- spore_init_file[,c("log10left","log10right")]
-names(cens_data) <- c("left","right")
-spore_fit <- fitdistcens(censdata = cens_data,distr = "norm")
+## (a) Simulation setting
+n_sim = 100
+n_units = 10
 
-spore_log10MPN_mean <- spore_fit$estimate[1]
-spore_log10MPN_sd <- spore_fit$estimate[2]
+lot_id = rep(seq(1, n_sim), each = n_units)
+unit_id = rep(seq(1,n_units), times = n_sim) 
+ModelData = tibble(lot_id, unit_id)
 
-## (b) Frequency of allelic types
-AT_freq <- spore_ATfreq_import$ClosestAT 
+## (b) AT frequency 
+ATfreq = ATfreq %>% pull(ClosestAT)
 
-## (c) Simulation setting
-n_sim <- 100 
-n_units <- 10
+GrowthParas = GrowthParas %>%
+  select(rpoBAT, lag, mumax, LOG10Nmax)
 
-lot_id <- rep(seq(1, n_sim), each = n_units)
-unit_id <- rep(seq(1,n_units), times = n_sim ) 
+growthAT = vector()
+for (i in 1:(n_units * n_sim)){
+  AT_samp = sample(ATfreq, 1,replace = T)
+  while(AT_samp == "AT_23" || AT_samp == "AT_159"){
+    AT_samp = sample(ATfreq, 1,replace = T)}
+  growthAT[i] = AT_samp
+}
 
-STorAT <- vector(mode="logical", n_sim  *n_units)
+ModelData$AT = growthAT
+ModelData$AT_index = match(ModelData$AT, GrowthParas$rpoBAT)
+ModelData$log10Nmax = GrowthParas$LOG10Nmax[ModelData$AT_index]
 
+## (c) Time and temperature distributions 
 #stage1, storage at facility
-t_F <- vector(mode="logical", n_sim  *n_units) 
-T_F <- vector(mode="logical", n_sim  *n_units) 
-count_F <- vector(mode = "logical", n_sim  *n_units)
+ModelData$T_F = rep(runif(n_sim, min = 3.5, max = 4.5), each = n_units) # temp
+ModelData$t_F = rep(runif(n_sim, min = 1, max = 2), each = n_units)     # time
 
 #stage2, transport to retail store
-t_T <- vector(mode="logical", n_sim  *n_units) 
-T_T <- vector(mode="logical", n_sim  *n_units) 
-count_T <- vector(mode = "logical", n_sim  *n_units)
+ModelData$T_T = rep(rtri(n_sim, min = 1.7, max = 10.0, mode = 4.4), each = n_units) # temp
+ModelData$t_T = rep(rtri(n_sim, min = 1, max = 10, mode = 5), each = n_units)       # time
 
 #stage3, storage/display at retail store
-t_S <- vector(mode="logical", n_sim  *n_units) 
-T_S <- vector(mode="logical", n_sim  *n_units) 
-count_S <- vector(mode = "logical", n_sim  *n_units)
+ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 5.4, mean = 2.3, sd = 1.8), each = n_units)       # temp
+ModelData$t_S = rep(rtruncnorm(n_sim, a = 0.042, b = 10.0, mean = 1.821, sd = 3.3), each = n_units)   # time
 
 #stage4, transport from retail store to homes
-t_T2 <- vector(mode="logical", n_sim  *n_units) 
-T_T2 <- vector(mode="logical", n_sim  *n_units) 
-count_T2 <- vector(mode = "logical", n_sim  *n_units)
+ModelData$T_T2 = rep(rtruncnorm(n_sim, a = 0, b = 10, mean = 8.5, sd = 1.0), each = n_units)          # temp
+ModelData$t_T2 = rep(rtruncnorm(n_sim, a = 0.01, b = 0.24, mean = 0.04, sd = 0.02), each = n_units)   # time
 
 #stage5, storage at homes
-t_H <- vector(mode="logical", n_sim  *n_units) 
-T_H <- vector(mode="logical", n_sim  *n_units) 
-count_H <- vector(mode = "logical", n_sim  *n_units)
-
-data <- data.frame(lot_id, unit_id,STorAT,t_F, T_F, count_F, 
-                   t_T, T_T, count_T, t_S, T_S, count_S, t_T2, T_T2, count_T2,
-                   t_H, T_H, count_H)
-
-lagAtNewTemp <- function (newTemp, oldLag, oldTemp = 6, T0 = 1.15) {
-  numerator <- oldTemp -T0
-  denom <- newTemp - T0
-  newLag <- ( (numerator / denom)^2) * oldLag
-  return(newLag)
+temps = vector()
+for (i in 1:(n_sim*n_units)){
+  number <- rlaplace(1,m=4.06,s=2.31)
+  while (number > 15 | number < -1) {
+    number <- rlaplace(1,m=4.06,s=2.31) #make sure that this cannot be >15 or < -1
+  }
+  temps[i] <- number
 }
+
+ModelData$T_H = temps 
+
+
+
+
 
 ######################################### Model #############################################
 shinyServer(function(input, output) {
@@ -111,305 +97,135 @@ shinyServer(function(input, output) {
 #-----------------------------------------------------setting---------------------------------------------
   # get initial count
   
-  model_result <- reactive({
+  model_result = reactive({
     
-  spore_log10MPN_samp <-  rnorm(n_sim, input$count_mean, input$count_sd) 
+  spore_log10MPN_samp =  rnorm(n_sim, input$count_mean, input$count_sd) 
 
-  #Convert spore_log10MPN_samp back to spore_MPN_samp
-  spore_MPN_samp <- 10^(spore_log10MPN_samp) 
-  
-  #Convert MPN for each sample to equivalent in milk unit of interest (1900 mL in half gallon)
+  ## Convert log10 MPN/mL to MPN/mL
+  spore_MPN_samp <- 10^spore_log10MPN_samp
+  ## Convert MPN for each 1900 mL milk container
   spore_MPN_samp_halfgal <- spore_MPN_samp * 1900
-  
   #Sample the MPN_init distribution
   spore_MPN_init<-vector()
   for (i in 1:n_sim){
     spore_MPN_init_samp <-rep(rpois(n_units, spore_MPN_samp_halfgal[i]))
     spore_MPN_init<-c(spore_MPN_init, spore_MPN_init_samp)}
+  # First convert spore_MPN_init from half-gallon to mLs
+  spore_MPN_init[spore_MPN_init < 1] = 0
+  spore_MPN_init_mL = spore_MPN_init / 1900
+  # Remove 0's from the data and replace with detection limit
+  spore_MPN_init_mL[spore_MPN_init_mL <= 0 ] = 0.01
   
-  #First convert spore_MPN_init from half-gallon to mLs
-  spore_MPN_init[spore_MPN_init<1] = 0
-  spore_MPN_init_mL <- spore_MPN_init / 1900
-  data$spore_MPN_init_mL <- spore_MPN_init_mL
   
-  #Also need to remove 0's from the data and replace with detection limit
-  data$spore_MPN_init_mL[data$spore_MPN_init_mL<=0 ] <- 0
-  data$spore_MPN_init_mL[data$spore_MPN_init_mL == 0] <- 0.01
+  ModelData$log10InitConc = log10(spore_MPN_init_mL)
   
-  #Add spore_log10MPN_init to dataframe
-  data$spore_log10MPN_init_mL <- log10(data$spore_MPN_init_mL) 
+#-----------------------------------------------------intervention strategies---------------------------------------------
+  # spore reduction 
+  if (input$sporeRed == "mf") {ModelData$log10InitConc = ModelData$log10InitConc - 2.2}
+  else if (input$sporeRed == "bf1") {ModelData$log10InitConc = ModelData$log10InitConc - 1.4}
+  else if (input$sporeRed == "bf2") {ModelData$log10InitConc = ModelData$log10InitConc - 2}
+  else {}
   
-  if (input$mf) {data$spore_log10MPN_init_mL = data$spore_log10MPN_init_mL - 2.2}
-  if (input$bf1) {data$spore_log10MPN_init_mL = data$spore_log10MPN_init_mL - 1.4}
-  if (input$bf2) {data$spore_log10MPN_init_mL = data$spore_log10MPN_init_mL - 2}
-
-
+  # temp control at facility
+  if (input$f_intervention == "f_reduceT") {ModelData$T_F = rep(runif(n_sim, min = 2.5, max = 3.5), each = n_units)}
+  else if (input$f_intervention == "f_supercool") {ModelData$T_F = rep(runif(n_sim, min = 0.5, max = 1.5), each = n_units)}
+  else if (input$f_intervention == "f_reduceVar") {ModelData$T_F = rep(runif(n_sim, min = 3.75, max = 4.25), each = n_units)}
+  else {}
+    
+  # temp control at transportation
+  if (input$ftr_intervention == "ftr_alarm") {ModelData$T_T = rep(rtri(n_sim, min = 1.7, max = 6.0, mode = 4.4), each = n_units)}
+  else if (input$ftr_intervention == "ftr_opt") {ModelData$t_T = rep(rtri(n_sim, min = 1, max = 7, mode = 5), each = n_units)}
+  else {}
   
-  #Sample AT from AT_freq & add to df; no-growth ATs were removed
-  AT <- vector()
-  for (i in 1:(n_units*n_sim)){
-    AT_samp <- sample(AT_freq, 1,replace = T)
-    while(AT_samp == "AT_23" || AT_samp == "AT_159"){
-      AT_samp <- sample(AT_freq, 1,replace = T)}
-    AT[i] = AT_samp
-  }
+  # temp control at retail
+  if (input$r_intervention == "r_reduceT") {ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 5.4, mean = 1.8, sd = 1.8), each = n_units)}
+  else if (input$r_intervention == "r_alarm") {ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 4, mean = 2.3, sd = 1.8), each = n_units)}
+  else if (input$r_intervention == "r_reduceVar") {ModelData$T_S = rep(rtruncnorm(n_sim, a = -1.4, b = 5.4, mean = 2.3, sd = 0.9), each = n_units)}
+  else {}
   
-  data$STorAT = AT
+#----------------------------------------------- set up growth parameters------------------------------------------------
+  # stage1, storage at facility
+  ModelData$newLag_F = lagAtNewTemp(ModelData$T_F, GrowthParas$lag[ModelData$AT_index])
+  ModelData$newMu_F =  muAtNewTemp(ModelData$T_F, GrowthParas$mumax[ModelData$AT_index])
+  
+  # stage2, transport to retail store
+  ModelData$newLag_T = lagAtNewTemp(ModelData$T_T, GrowthParas$lag[ModelData$AT_index])
+  ModelData$newMu_T =  muAtNewTemp(ModelData$T_T, GrowthParas$mumax[ModelData$AT_index])
+  
+  # stage3, storage/display at retail store
+  ModelData$newLag_S = lagAtNewTemp(ModelData$T_S, GrowthParas$lag[ModelData$AT_index])
+  ModelData$newMu_S =  muAtNewTemp(ModelData$T_S, GrowthParas$mumax[ModelData$AT_index])
+  
+  # stage4, transport from retail store to homes
+  ModelData$newLag_T2 = lagAtNewTemp(ModelData$T_T2, GrowthParas$lag[ModelData$AT_index])
+  ModelData$newMu_T2 =  muAtNewTemp(ModelData$T_T2, GrowthParas$mumax[ModelData$AT_index])
+  
+  # stage5, storage at homes
+  ModelData$newLag_H = lagAtNewTemp(ModelData$T_H, GrowthParas$lag[ModelData$AT_index])
+  ModelData$newMu_H =  muAtNewTemp(ModelData$T_H, GrowthParas$mumax[ModelData$AT_index])
   
 #-----------------------------------------------Stage 1: Storage at facility----------------------------------------------
-  ## (a)  Sample the temperature distribution & add to dataframe
-  temps_F <- rep(runif(n_sim,min=3.5,max=4.5),each=n_units) #uniform distribution
-  if (input$f_reduceT) {temps_F <- rep(runif(n_sim,min=2.5,max=3.5),each=n_units)}
-  if (input$f_supercool) {temps_F <- rep(runif(n_sim,min=0.5,max=1.5),each=n_units)}
-  data$T_F <- temps_F
+  ModelData = ModelData %>%
+    rowwise() %>% 
+    mutate(predConc_F = log10N_func(t = t_F, lag = newLag_F, mumax = newMu_F,
+                                    LOG10N0 = log10InitConc, LOG10Nmax = log10Nmax))
   
-  ## (b) Sample the storage time (in days) distribution & add to dataframe
-  times_F <- rep(runif(n_sim,min=1,max=2),each=n_units) #uniform distribution
-  data$t_F <- times_F
+  # stage2, transport to retail store
+  ModelData = ModelData %>% 
+    rowwise() %>% 
+    mutate(Lag_T = max(0, 1 - t_F/newLag_F) * newLag_T) %>%  
+    mutate(Mu_T = if_else(T_T >= T_F * 0.75 & T_T <= T_F * 1.25, newMu_F, newMu_T)) %>% 
+    mutate(predConc_T = log10N_func(t = t_T, lag = Lag_T, mumax = Mu_T,
+                                    LOG10N0 = predConc_F, LOG10Nmax = log10Nmax))
   
-  ## (c) Determine newLag_F and newMu_F
-  for (i in 1:(n_sim*n_units)){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == data$STorAT[i])
-    
-    #Calculate the new growth parameters at new temp using the square root model 
-    newLag_F <- lagAtNewTemp(data$T_F[i], spore_growth_import$lag[allele_index])
-    newMu_F <-  muAtNewTemp(data$T_F[i], spore_growth_import$mumax[allele_index])
-    
-    data$newLag_F[i] <- newLag_F
-    data$newMu_F[i] <- newMu_F
-  }
+  # stage3, storage/display at retail store
+  ModelData = ModelData %>% 
+    rowwise() %>% 
+    mutate(Lag_S = max(0, 1 - t_T/Lag_T) * newLag_S) %>%  
+    mutate(Mu_S = if_else(T_S >= T_T * 0.75 & T_S <= T_T * 1.25, newMu_T, newMu_S)) %>% 
+    mutate(predConc_S = log10N_func(t = t_S, lag = Lag_S, mumax = Mu_S,
+                                    LOG10N0 = predConc_T, LOG10Nmax = log10Nmax))
   
-  ## (d) Determine count_F
-  for (i in 1:(n_sim *n_units)){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == data$STorAT[i]) 
-    
-    #Calculate the log10N count using the new growth parameters
-    data$count_F[i] <- log10N_func(data$t_F[i], data$newLag_F[i],data$newMu_F[i],data$spore_log10MPN_init_mL[i],spore_growth_import$LOG10Nmax[allele_index])
-  }
+  # stage4, transport from retail store to homes
+  ModelData = ModelData %>% 
+    rowwise() %>% 
+    mutate(Lag_T2 = max(0, 1 - t_S/Lag_S) * newLag_T2) %>%  
+    mutate(Mu_T2 = if_else(T_T2 >= T_S * 0.75 & T_T2 <= T_S * 1.25, newMu_S, newMu_T2)) %>% 
+    mutate(predConc_T2 = log10N_func(t = t_T2, lag = Lag_T2, mumax = Mu_T2,
+                                     LOG10N0 = predConc_S, LOG10Nmax = log10Nmax))
   
+  # stage5, storage at homes
+  ModelData = ModelData %>% 
+    slice(rep(1:n(), each = 35)) 
   
-#-----------------------------------------------Stage 2: Transport from facility to retail-------------------------------
-  ## (a)  Sample the temperature distribution & add to dataframe
-  temps_T <- rep(rtri(n_sim,min=1.7,max=10.0,mode=4.4),each=n_units) #triangular distribution
-  data$T_T <- temps_T
+  ModelData$t_H = rep(1:35, times = n_sim * n_units)
   
-  ## (b) Sample the storage time (in days) distribution & add to df
-  times_T <- rep(rtri(n_sim,min=1,max=10,mode=5),each=n_units)
-  data$t_T <- times_T
+  ModelData = ModelData %>% 
+    rowwise() %>% 
+    mutate(Lag_H = max(0, 1 - t_T2/Lag_T2) * newLag_H) %>%  
+    mutate(Mu_H = if_else(T_H >= T_T2 * 0.75 & T_H <= T_T2 * 1.25, newMu_T2, newMu_H)) %>% 
+    mutate(predConc_H = log10N_func(t = t_H, lag = Lag_H, mumax = Mu_H,
+                                    LOG10N0 = predConc_T2, LOG10Nmax = log10Nmax))
   
-  ## (c) Determine Lag_T and Mu_T
-  ## determine lag & mumax at new temp
-  for (i in 1:(n_sim*n_units)){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == data$STorAT[i])
-    
-    #Calculate the new growth parameters at new temp using the square root model 
-    newLag_T <- lagAtNewTemp(data$T_T[i], spore_growth_import$lag[allele_index])
-    newMu_T <-  muAtNewTemp(data$T_T[i], spore_growth_import$mumax[allele_index])
-    
-    data$newLag_T[i] <- newLag_T
-    data$newMu_T[i] <- newMu_T
-  }
+  # Assign the spoilage to each milk container at each day
+  ModelData = ModelData %>% 
+    rowwise() %>% 
+    mutate(spoil = predConc_H > input$threshold)
   
-  ### Determine Lag_T
-  data$checkLagPhase_T <- ifelse((data$t_F/data$newLag_F) <1, 1, 0)
-  data$adjLag_T <- ((1 - (data$t_F/data$newLag_F))*data$newLag_T) 
-  data$Lag_T <- ifelse(data$checkLagPhase_T==0,0,data$adjLag_T)
+  # Summarise percent of spoiled milk containers per storage day
+  spoilData = ModelData %>% 
+    group_by(t_H) %>% 
+    summarise(perSpoil = 100 * sum(spoil) / (n_sim * n_units)) %>% 
+    rename(days = t_H)
   
-  ### Determine Mu_T
-  data$Mu_T <- ifelse(data$T_T >= data$T_F*0.75 & data$T_T <= data$T_F*1.25, data$newMu_F, data$newMu_T)
-  data$checkTemp_FtoT <- ifelse(data$T_T >= data$T_F*0.75 & data$T_T <= data$T_F*1.25, "T_F", "T_T") 
-  
-  ## (d) Determine count_T
-  for (i in 1:(n_sim *n_units)){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == data$STorAT[i]) 
-    
-    #Calculate the log10N count using the new growth parameters
-    data$count_T[i] <- log10N_func(data$t_T[i], data$Lag_T[i],data$Mu_T[i],data$count_F[i],spore_growth_import$LOG10Nmax[allele_index])
-  }
-  
-#-----------------------------------------Stage 3: Storage at retail store-------------------------------------------------------
-  ## (a)  Sample the temperature distribution & add to dataframe
-  unif_mean = 2.3
-  unif_b = 5.4
-  if (input$r_reduceT) {unif_mean = 1.8}
-  if (input$r_alarm) {unif_b = 4}
-  temps_S <- rep(rtruncnorm(n_sim,a=-1.4,b=unif_b,mean=unif_mean,sd=1.8),each=n_units) #triangular distribution
-  data$T_S <- temps_S
-  
-  ## (b) Sample the retail storage & display time (in days) distribution & add to dataframe
-  times_S <- rep(rtruncnorm(n_sim,a=0.042,b=10.0, mean=1.821,sd=3.3),each=n_units)
-  data$t_S <- times_S
-  
-  ## (c) Determine Lag_S and Mu_S
-  ## determine lag & mumax at new temp
-  for (i in 1:(n_sim*n_units)){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == data$STorAT[i])
-    
-    #Calculate the new growth parameters at new temp using the square root model 
-    newLag_S <- lagAtNewTemp(data$T_S[i], spore_growth_import$lag[allele_index])
-    newMu_S <-  muAtNewTemp(data$T_S[i], spore_growth_import$mumax[allele_index])
-    
-    data$newLag_S[i] <- newLag_S
-    data$newMu_S[i] <- newMu_S
-  }
-  
-  ## Determine Lag_S
-  data$checkLagPhase_S <- ifelse(((data$t_F/data$newLag_F)+(data$t_T/data$Lag_T)) <1, 1, 0)
-  data$adjLag_S <- ((1 - (data$t_F/data$newLag_F)-(data$t_T/data$Lag_T))*data$newLag_S) 
-  data$Lag_S <- ifelse(data$checkLagPhase_S==0,0,data$adjLag_S)
-  
-  ## Determine Mu_S
-  data$Mu_S <- ifelse(data$T_S >= data$T_T*0.75 & data$T_S <= data$T_T*1.25, data$newMu_T, data$newMu_S)
-  data$checkTemp_TtoS <- ifelse(data$T_S >= data$T_T*0.75 & data$T_S <= data$T_T*1.25, "T_T", "T_S") 
-  
-  ## (d) Determine count_S
-  for (i in 1:(n_sim *n_units)){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == data$STorAT[i]) 
-    
-    #Calculate the log10N count using the new growth parameters
-    data$count_S[i] <- log10N_func(data$t_S[i], data$Lag_S[i],data$Mu_S[i],data$count_T[i],spore_growth_import$LOG10Nmax[allele_index])
-  }
-  
-#-------------------------------------------------Stage 4: Transport from retail to home--------------------------------------------------
-  ## (a)  Sample the temperature distribution & add to df
-  temps_T2 <- rep(rtruncnorm(n_sim,a=0,b=10,mean=8.5,sd=1.0),each=n_units) #we made this up
-  data$T_T2 <- temps_T2
-  
-  ## (b) Sample the transportion time (in days) distribution & add to dataframe
-  times_T2 <- rep(rtruncnorm(n_sim,a=0.01,b=0.24, mean=0.04,sd=0.02),each=n_units)
-  data$t_T2 <- times_T2
-  
-  ## (c) Determine Lag_S and Mu_S
-  ## determine lag & mumax at new temp
-  for (i in 1:(n_sim*n_units)){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == data$STorAT[i])
-    
-    #Calculate the new growth parameters at new temp using the square root model 
-    newLag_T2 <- lagAtNewTemp(data$T_T2[i], spore_growth_import$lag[allele_index])
-    newMu_T2 <-  muAtNewTemp(data$T_T2[i], spore_growth_import$mumax[allele_index])
-    
-    data$newLag_T2[i] <- newLag_T2
-    data$newMu_T2[i] <- newMu_T2
-  }
-  
-  ## Determine Lag_T2
-  data$checkLagPhase_T2 <- ifelse(((data$t_F/data$newLag_F)+(data$t_T/data$Lag_T)+(data$t_S/data$Lag_S)) <1, 1, 0)
-  data$adjLag_T2 <- (1 - (data$t_F/data$newLag_F)-(data$t_T/data$Lag_T)-(data$t_S/data$Lag_S))*data$newLag_T2 
-  data$Lag_T2 <- ifelse(data$checkLagPhase_T2==0,0,data$adjLag_T2)
-  
-  ## Determine Mu_T2
-  data$Mu_T2 <- ifelse(data$T_T2 >= data$T_S*0.75 & data$T_T2 <= data$T_S*1.25, data$newMu_S, data$newMu_T2)
-  data$checkTemp_StoT2 <- ifelse(data$T_T2 >= data$T_S*0.75 & data$T_T2 <= data$T_S*1.25, "T_S", "T_T2") 
-  
-  ## (d) Determine count_T2
-  for (i in 1:(n_sim *n_units)){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == data$STorAT[i]) 
-    
-    #Calculate the log10N count using the new growth parameters
-    data$count_T2[i] <- log10N_func(data$t_T2[i], data$Lag_T2[i],data$Mu_T2[i],data$count_S[i],spore_growth_import$LOG10Nmax[allele_index])
-  }
-
-#-----------------------------------------------------Stage 5: Storage at home----------------------------------------------------------
-  ## (a)  Sample the temperature distribution & add to df
-  temps <- rep(NA, n_sim)
-  
-  for (i in 1:(n_sim*n_units)){
-    number <- rlaplace(1,m=4.06,s=2.31)
-    while (number > 15 | number < -1) {
-      number <- rlaplace(1,m=4.06,s=2.31) #make sure that this cannot be >15 or < -1
-    }
-    temps[i] <- number
-  }
-  
-  data$T_H <- temps 
-  
-  ## (b) Define t_H as 1 d for all units; this is just the first day of home storage
-  data$t_H <- rep(1, each = n_sim*n_units)
-  
-  ## (c) Determine Lag_H and Mu_H
-  ## determine lag & mumax at new temp
-  for (i in 1:(n_sim*n_units)){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == data$STorAT[i])
-    
-    #Calculate the new growth parameters at new temp using the square root model 
-    newLag_H <- lagAtNewTemp(data$T_H[i], spore_growth_import$lag[allele_index])
-    newMu_H <-  muAtNewTemp(data$T_H[i], spore_growth_import$mumax[allele_index])
-    
-    data$newLag_H[i] <- newLag_H
-    data$newMu_H[i] <- newMu_H
-  }
-  
-  ## Determine Lag_H
-  data$checkLagPhase_H <- ifelse(((data$t_F/data$newLag_F)+(data$t_T/data$Lag_T)+(data$t_S/data$Lag_S)+(data$t_T2/data$Lag_T2)) <1, 1, 0)
-  data$adjLag_H <- (1 - (data$t_F/data$newLag_F)-(data$t_T/data$Lag_T)-(data$t_S/data$Lag_S)-(data$t_T2/data$Lag_T2))*data$newLag_H 
-  data$Lag_H <- ifelse(data$checkLagPhase_H==0,0,data$adjLag_H)
-  
-  ## Determine Mu_H
-  data$Mu_H <- ifelse(data$T_H >= data$T_T2*0.75 & data$T_H <= data$T_T2*1.25, data$newMu_T2, data$newMu_H)
-  data$checkTemp_T2toH <- ifelse(data$T_H >= data$T_T2*0.75 & data$T_H <= data$T_T2*1.25, "T_T2", "T_H") 
-  
-  ## (d) Determine count_H (this is the count for day 1 of home storage)
-  for (i in 1:(n_sim *n_units)){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == data$STorAT[i]) 
-    
-    #Calculate the log10N count using the new growth parameters
-    data$count_H[i] <- log10N_func(data$t_H[i], data$Lag_H[i],data$Mu_H[i],data$count_T2[i],spore_growth_import$LOG10Nmax[allele_index])
-  }
-  
-  ## (e) simulate the rest of storage 
-  df2 <- data[c(1:3,17,18,48,49,50,20)]
-  start_day <- 2 
-  end_day <- input$day
-
-  actual_t_H <- rep(rep(seq(start_day, end_day)), times = n_units*n_sim) 
-  sim_day <- rep(rep(seq(start_day-1, end_day-1)), times = n_units*n_sim)
-
-  df3 <- df2[rep(seq_len(nrow(df2)), each = end_day-1), ] 
-  
-  # add actual_t_H (i.e., actual day of home storage) and sim_day to dataframe
-  df3$actual_t_H <- actual_t_H
-  df3$sim_day <- sim_day
-  
-  # make an empty vector for "count" with the length of n_sim * n_units * n_day
-  count <- vector(mode = "logical", n_sim * n_units * (end_day-1))
-  
-  # add empty count to dataframe
-  df3$count <- count
-  
-  ## (d) Determine count for each day of shelf-life for each unit
-  for (i in 1:(n_sim*n_units*(end_day-1))){
-    #Find row in growth parameter data that corresponds to allele sample
-    allele_index <- which(spore_growth_import$STorAT == df3$STorAT[i]) 
-    
-    #Calculate the log10N count using the new growth parameters
-    df3$count[i] <- log10N_func(df3$sim_day[i], df3$Lag_H[i],df3$Mu_H[i],df3$count_H[i],spore_growth_import$LOG10Nmax[allele_index])
-  }
-  
-  per_spoiled = vector()
-  for (i in 1:(end_day-1)){
-  per_spoiled = c(per_spoiled, sum(df3$count[sim_day==i] > input$threshold)/length(df3$count[sim_day==i]))
-  }
-  per_spoiled = per_spoiled * 100
-  days = c(2:end_day)
-  result = cbind(days, per_spoiled) %>% as.data.frame()
-  result
+  spoilData
 })  
 
 #--------------------------------------------------------Display results----------------------------------------------------------
 output$plot <- renderPlot({
     
-  ggplot(data = model_result(), aes(x = days, y = per_spoiled))+
-      geom_line(aes(y=per_spoiled))+
+  ggplot(data = model_result(), aes(x = days, y = perSpoil))+
+      geom_line(aes(y=perSpoil))+
       labs(title="Simulated % of spoiled half-gallon milk containers due to outgrowth of psychrotolerant sporeformers",
            x="Consumer storage (days)",
            y="% of spoiled half-gallon milk containers")+
@@ -420,8 +236,16 @@ output$plot <- renderPlot({
   },
   res = 108)
 
-output$rawdata <- renderPrint({
-  model_result()
+output$shelfLife <- renderText({
+  perSpoil = model_result() %>% pull(perSpoil)
+  perSpoil_min = min(perSpoil[perSpoil > input$shelfLife_threshold])
+  if (perSpoil_min != Inf){
+    shelfLife = model_result() %>% filter(perSpoil == perSpoil_min) %>% pull(days)
+    paste0("The predicted shelf life is ", shelfLife, " days.")
+  } else {
+    "The predicted shelf life is beyond 35 days"
+  }
+  
 })
 
 output$downloadData <- downloadHandler(
