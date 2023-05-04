@@ -98,7 +98,7 @@ ggplot(data = TX.Val_T3, aes(x=Day, y=Count, fill=Type))+
   #scale_x_discrete(breaks = sort(unique(Val2_T3$Day)))+
   geom_hline(yintercept = 4.3, linetype=2)+
   labs(y="Concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (3C) storage (Days)")+
+       x="Duration of refrigerated (3°C) storage (Days)")+
   theme(axis.title.y = element_text(size=12),
         #axis.ticks.x=element_blank(),
         #axis.text.x=element_blank(),
@@ -115,7 +115,7 @@ ggplot(data = TX.Val_T6.5, aes(x=Day, y=Count, fill=Type))+
   #scale_x_discrete(breaks = sort(unique(Val2_T3$Day)))+
   geom_hline(yintercept = 4.3, linetype=2)+
   labs(y="Concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (6.5C) storage (Days)")+
+       x="Duration of refrigerated (6.5°C) storage (Days)")+
   theme(axis.title.y = element_text(size=12),
         #axis.ticks.x=element_blank(),
         #axis.text.x=element_blank(),
@@ -132,7 +132,7 @@ ggplot(data = TX.Val_T10, aes(x=Day, y=Count, fill=Type))+
   #scale_x_discrete(breaks = sort(unique(Val2_T3$Day)))+
   geom_hline(yintercept = 4.3, linetype=2)+
   labs(y="Concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (10C) storage (Days)")+
+       x="Duration of refrigerated (10°C) storage (Days)")+
   theme(axis.title.y = element_text(size=12),
         #axis.ticks.x=element_blank(),
         #axis.text.x=element_blank(),
@@ -194,7 +194,7 @@ ggplot(data = NY.Val_T4, aes(x=Day, y=Count, fill=Type))+
   #scale_x_discrete(breaks = sort(unique(Val2_T3$Day)))+
   geom_hline(yintercept = 4.3, linetype=2)+
   labs(y="Concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (4C) storage (Days)")+
+       x="Duration of refrigerated (4°C) storage (Days)")+
   theme(axis.title.y = element_text(size=12),
         #axis.ticks.x=element_blank(),
         #axis.text.x=element_blank(),
@@ -211,7 +211,7 @@ ggplot(data = NY.Val_T6, aes(x=Day, y=Count, fill=Type))+
   #scale_x_discrete(breaks = sort(unique(Val2_T3$Day)))+
   geom_hline(yintercept = 4.3, linetype=2)+
   labs(y="Concentrations (log10 cfu/mL)",
-       x="Duration of refrigerated (6C) storage (Days)")+
+       x="Duration of refrigerated (6°C) storage (Days)")+
   theme(axis.title.y = element_text(size=12),
         #axis.ticks.x=element_blank(),
         #axis.text.x=element_blank(),

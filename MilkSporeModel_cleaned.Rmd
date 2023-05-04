@@ -378,13 +378,16 @@ spoilData = ModelData %>%
 spoilData
 (spoilData %>% filter(t_H %in% c(14, 21)) %>% pull(perSpoil) - c(0.286, 0.443)) *100
 
-#spoilData %>% 
-#  ggplot(aes(x = t_H, y = perSpoil*100)) +
-#  geom_line() +
-#  labs(y="Percentage of spoiled half-gallon milk (%)",
-#       x="Consumer storage time (Days)") +
-#  theme_classic()
-#ggsave("Figures/Fig5.Baseline.tiff", height = 4, width = 8, units = "in", dpi = "retina")
+spoilData %>% 
+  ggplot(aes(x = t_H, y = perSpoil*100)) +
+  geom_line() +
+  #annotate("segment", x = 0, xend = 24, y = 50, yend = 50, linetype = "dashed") +
+  #annotate("segment", x = 24, xend = 24, y = 0, yend = 50, linetype = "dashed") +
+  labs(y="Percentage of spoiled half-gallon milk (%)",
+       x="Consumer storage time (Days)") +
+  scale_y_continuous(breaks = seq(0, 80, by = 10)) +
+  theme_classic()
+ggsave("Figures/Fig5.Baseline.tiff", height = 4, width = 8, units = "in", dpi = "retina")
 
 
 ## spore-former concentration by 14- and 21-day consumer storage
